@@ -1,8 +1,8 @@
-# MPC Lizard Spock
+# JumboSwap
 
-Rock Paper Scissors Lizard Spock using MPC.
+Discover swap opportunities within groups using MPC.
 
-https://voltrevo.github.io/mpc-lizard-spock
+https://voltrevo.github.io/jumboswap
 
 Built using [MPC framework](https://github.com/voltrevo/mpc-framework) using a
-[secure 2PC backend](https://github.com/voltrevo/emp-wasm-backend).
+[secure MPC backend](https://github.com/voltrevo/emp-wasm-backend).
