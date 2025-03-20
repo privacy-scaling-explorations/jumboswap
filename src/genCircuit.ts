@@ -1,14 +1,17 @@
+/* eslint-disable prefer-const */
+
 export default function genCircuit(nParties: number, seed: number): Record<string, string> {
   const args = [...new Array(nParties)].map((_, i) => `party${i}Prefs`).join(', ');
 
   const mainTs = `
     export default function main(${args}) {
-      let allPrefBits = [${args}].map(asBits);
+      let allPrefBits = [${args}].map((prefs, i) => asBits(${nParties}, i, prefs));
       const perms = makePermutations(${nParties}, ${seed});
 
-      let bestPerm = perms[0];
+      let bestPermIndex = 0;
 
-      for (const perm of perms.slice(1)) {
+      for (let permIndex = 0; permIndex < perms.length; permIndex++) {
+        const perm = perms[permIndex];
         let everyoneOk = true;
 
         for (let i = 0; i < ${nParties}; i++) {
@@ -19,11 +22,11 @@ export default function genCircuit(nParties: number, seed: number): Record<strin
         }
 
         if (everyoneOk) {
-          bestPerm = perm;
+          bestPermIndex = permIndex;
         }
       }
 
-      return bestPerm;
+      return bestPermIndex;
     }
 
     ${asBits.toString()}
@@ -36,7 +39,7 @@ export default function genCircuit(nParties: number, seed: number): Record<strin
 }
 
 function asBits(nParties: number, partyIndex: number, prefs: number): boolean[] {
-  const prefBits = [];
+  let prefBits = [];
 
   for (let i = 0; i < nParties; i++) {
     if (i === partyIndex) {
@@ -87,7 +90,7 @@ function makePermutations(n: number, seed: number): number[][] {
       return [values];
     }
 
-    const perms: number[][] = [];
+    let perms: number[][] = [];
 
     for (const value of values) {
       const otherValues = values.filter(v => v !== value);
