@@ -33,3 +33,46 @@
 button.😍 {
   background: #d73253;
 }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+}
+
+.form-grid input {
+  width: initial;
+}
+
+label {
+  padding-right: 10px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 5px;
+}
+
+.parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  grid-auto-flow: row;
+}
+
+.parties > div {
+  padding: 5px 10px;
+}
+
+.th-cell {
+  font-weight: bold;
+  border-bottom: 1px solid black;
+}
+
+.ready-cell {
+  text-align: center;
+}
+
+.ping-cell {
+  text-align: right;
+}

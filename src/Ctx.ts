@@ -32,9 +32,16 @@ const rtcConfig = (() => {
   return JSON.parse(envVar);
 })();
 
+type Party = {
+  name: string;
+  item: string;
+  ready: boolean;
+  ping: number;
+};
+
 export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
   page = new UsableField<PageKind>('Home');
-  mode: 'Host' | 'Join' = 'Host';
+  mode = new UsableField<'Host' | 'Join'>('Host');
   key = new UsableField(Key.random());
   socket = new UsableField<RtcPairSocket | undefined>(undefined);
   friendReady = false;
@@ -42,6 +49,17 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
   errorMsg = new UsableField<string>('');
   choice = new UsableField<GameOption | undefined>(undefined);
   mpcProgress = new UsableField<number>(0);
+  parties = new UsableField<Party[]>([
+    {
+      name: 'Alice', item: 'Cake', ready: false, ping: 87,
+    },
+    {
+      name: 'Bob', item: 'Salad', ready: false, ping: 123,
+    },
+    {
+      name: 'Charlie', item: 'Bicycle', ready: true, ping: 2116,
+    },
+  ]);
 
   constructor() {
     super();
@@ -60,7 +78,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
 
     const socket = new RtcPairSocket(
       this.key.value.base58(),
-      this.mode === 'Host' ? 'alice' : 'bob',
+      this.mode.value === 'Host' ? 'alice' : 'bob',
       rtcConfig,
     );
 
@@ -73,7 +91,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
   }
 
   async host() {
-    this.mode = 'Host';
+    this.mode.set('Host');
     const socket = await this.connect();
 
     socket.removeAllListeners('message');
@@ -93,7 +111,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
 
     this.page.set('Connecting');
 
-    this.mode = 'Join';
+    this.mode.set('Join');
     this.key.set(Key.fromBase58(keyBase58));
     const socket = await this.connect();
     socket.send({ from: 'joiner', type: 'init' });
@@ -114,7 +132,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
     const msgQueue = new AsyncQueue<unknown>();
 
     const FriendMsg = z.object({
-      from: z.literal(this.mode === 'Host' ? 'joiner' : 'host'),
+      from: z.literal(this.mode.value === 'Host' ? 'joiner' : 'host'),
     });
 
     const msgListener = (msg: unknown) => {
@@ -144,7 +162,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
     socket.off('message', msgListener);
 
     const result = await runProtocol(
-      this.mode,
+      this.mode.value,
       socket,
       choice,
       percentage => {
@@ -174,7 +192,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
     }
 
     this.socket.value!.send({
-      from: this.mode === 'Host' ? 'host' : 'joiner',
+      from: this.mode.value === 'Host' ? 'host' : 'joiner',
       type: 'ready',
     });
   }

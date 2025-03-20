@@ -31,7 +31,7 @@ export default async function runProtocol(
 
   await summon.init();
 
-  const circuitFiles = genCircuit('todo');
+  const circuitFiles = genCircuit(4, 1.1);
   const circuit = summon.compileBoolean('circuit/main.ts', 3, circuitFiles);
 
   const mpcSettings = [

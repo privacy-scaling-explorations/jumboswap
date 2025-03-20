@@ -1,70 +1,56 @@
 import { useState } from 'react';
 import './Choose.css';
-import Ctx, { GameOption } from './Ctx';
-import capitalize from './capitalize';
-import getEmoji from './getEmoji';
+import Ctx from './Ctx';
 
 export default function Choose() {
   const ctx = Ctx.use();
-  const [selection, setSelection] = useState<GameOption | undefined>();
+  const mode = ctx.mode.use();
+  const parties = ctx.parties.use();
+  const [ready, setReady] = useState(false);
 
   return (
     <div className='choose-page' style={{ WebkitTapHighlightColor: 'transparent' }}>
-      <Choice selection={selection} setSelection={setSelection} type='rock' />
-      <Choice selection={selection} setSelection={setSelection} type='paper' />
-      <Choice selection={selection} setSelection={setSelection} type='scissors' />
-      <Choice selection={selection} setSelection={setSelection} type='lizard' />
-      <Choice selection={selection} setSelection={setSelection} type='spock' />
-      <div style={{ marginBottom: '3em' }}>
-        {selection !== undefined && <>
-          <button
-            className='secondary'
-            onClick={() => setSelection(undefined)}
-            style={{
-              width: '100%',
-              lineHeight: '1.1em',
-              marginBottom: '1em',
-            }}
-          >Back to Selection</button>
-        </>}
-        <button
-          disabled={selection === undefined}
-          style={{ width: '100%', lineHeight: '1.1em' }}
-          className={selection}
-          onClick={() => {
-            if (selection === undefined) {
-              return;
-            }
-
-            ctx.send(selection);
-          }}
-        >{buttonText(selection)}</button>
+      <div className='title'>Lobby</div>
+      <div className='parties'>
+        <div className='th-cell'>Name</div>
+        <div className='th-cell'>Item</div>
+        <div className='th-cell ping-cell'>Ping</div>
+        <div className='th-cell'></div>
+        {parties.map((party, i) => (
+          <>
+            <div key={100 * i + 0}>{party.name}</div>
+            <div key={100 * i + 1}>{party.item}</div>
+            <div className='ping-cell' key={100 * i + 3}>{party.ping}ms</div>
+            <div className='ready-cell' key={100 * i + 2} style={{ transform: party.ready ? '' : 'scaleX(-1)' }}>{party.ready ? '✅' : '✏️'}</div>
+          </>
+        ))}
       </div>
+      <div>
+        <form className='form-grid'>
+          <label htmlFor='name'>Your name:</label>
+          <input type='text' id='name' name='name' disabled={ready} />
+
+          <label htmlFor='item'>Swapping item:</label>
+          <input type='text' id='item' name='item' disabled={ready} />
+        </form>
+      </div>
+      <div>
+        <button
+          className={ready ? 'secondary' : ''}
+          style={{ width: '100%', lineHeight: '1.1em' }}
+          onClick={() => setReady(!ready)}
+        >{ready ? 'Change Details' : 'I\'m Ready'}</button>
+      </div>
+      {mode === 'Host' && <>
+        <div style={{ visibility: ready ? 'visible' : 'hidden', marginBottom: '3em' }}>
+          <button style={{ width: '100%', lineHeight: '1.1em' }}>Start</button>
+        </div>
+      </>}
+      {mode === 'Join' && <>
+        <div style={{ visibility: ready ? 'visible' : 'hidden', marginBottom: '3em' }}>
+          Waiting for host...
+        </div>
+      </>}
     </div>
-  );
-}
-
-function buttonText(selection: GameOption | undefined) {
-  if (selection === undefined) {
-    return '(Choose then Confirm)';
-  }
-
-  return `Send ${capitalize(selection)}`;
-}
-
-function Choice({ selection, setSelection, type }: {
-  selection: GameOption | undefined;
-  setSelection: (selection: GameOption | undefined) => void;
-  type: GameOption;
-}) {
-  if (selection !== undefined && selection !== type) {
-    return <></>;
-  }
-
-  return (
-    <div
-      className={`choice ${selection === type && 'selected'} ${type}`}
-      onClick={() => setSelection(selection === type ? undefined : type)}
-    ><div style={{ fontSize: '2.2em' }}>{getEmoji(type)}</div></div>
   );
 }
