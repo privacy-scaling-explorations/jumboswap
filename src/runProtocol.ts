@@ -6,7 +6,7 @@ import { RtcPairSocket } from 'rtc-pair-socket';
 import assert from './assert';
 import AsyncQueue from './AsyncQueue';
 import { GameOption } from './Ctx';
-import getCircuitFiles from './getCircuitFiles';
+import genCircuit from './genCircuit';
 
 export default async function runProtocol(
   mode: 'Host' | 'Join',
@@ -31,7 +31,7 @@ export default async function runProtocol(
 
   await summon.init();
 
-  const circuitFiles = await getCircuitFiles();
+  const circuitFiles = genCircuit('todo');
   const circuit = summon.compileBoolean('circuit/main.ts', 3, circuitFiles);
 
   const mpcSettings = [
