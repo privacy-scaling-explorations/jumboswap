@@ -28,7 +28,7 @@ body {
   line-height: 1.5;
   font-weight: 400;
 
-  background-color: #90e2d3;
+  background-color: #90ade2;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -49,12 +49,12 @@ body {
 }
 
 a {
-  font-weight: 500;
-  color: #0000ff;
+  font-weight: bold;
+  color: #ffffac;
   text-decoration: inherit;
 }
 a:hover {
-  color: #3d3dff;
+  color: #ffffff;
 }
 
 h1 {
@@ -74,10 +74,10 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1613c1;
+  background-color: #ffffac;
   cursor: pointer;
   transition: border-color 0.25s;
-  color: white;
+  /* color: white; */
 }
 
 button.secondary {
