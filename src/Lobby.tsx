@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import './Choose.css';
+import './Lobby.css';
 import Ctx from './Ctx';
 
-export default function Choose() {
+export default function Lobby() {
   const ctx = Ctx.use();
   const mode = ctx.mode.use();
   const parties = ctx.parties.use();
   const [ready, setReady] = useState(false);
 
   return (
-    <div className='choose-page' style={{ WebkitTapHighlightColor: 'transparent' }}>
+    <div className='lobby-page' style={{ WebkitTapHighlightColor: 'transparent' }}>
       <div className='title'>Lobby</div>
       <div className='parties'>
         <div className='th-cell'>Name</div>

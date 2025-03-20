@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import Calculating from './Calculating';
-import Choose from './Choose';
+import Lobby from './Lobby';
 import Ctx from './Ctx';
 import Error from './Error';
 import Home from './Home';
@@ -38,8 +38,8 @@ function App() {
     content = <Join />;
   } else if (page === 'Connecting') {
     content = <h1>Connecting...</h1>;
-  } else if (page === 'Choose') {
-    content = <Choose />;
+  } else if (page === 'Lobby') {
+    content = <Lobby />;
   } else if (page === 'Waiting') {
     content = <Waiting />;
   } else if (page === 'Calculating') {

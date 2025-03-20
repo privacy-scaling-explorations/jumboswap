@@ -14,7 +14,7 @@ type PageKind =
   | 'Host'
   | 'Join'
   | 'Connecting'
-  | 'Choose'
+  | 'Lobby'
   | 'Waiting'
   | 'Calculating'
   | 'Result'
@@ -127,7 +127,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
   }
 
   async runProtocol(socket: RtcPairSocket) {
-    this.page.set('Choose');
+    this.page.set('Lobby');
 
     const msgQueue = new AsyncQueue<unknown>();
 
