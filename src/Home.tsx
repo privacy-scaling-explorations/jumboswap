@@ -103,7 +103,7 @@ export default function Home() {
           Join
         </button>
       </div>
-      <div />
+      <div className='gutter' />
     </div>
   );
 }

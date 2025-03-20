@@ -6,6 +6,17 @@
 .main.buttons {
   text-align: center;
   padding: 1rem;
+  position: fixed;
+  bottom: 0;
+  left: 50vw;
+  transform: translateX(-50%);
+  width: calc(var(--aw) - 4rem);
+  background-color: #90ade2;
+  border-top: 1px solid #00000018;
+}
+
+.gutter {
+  height: 5em;
 }
 
 .main.buttons :not(:first-child) {
