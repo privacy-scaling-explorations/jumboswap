@@ -45,7 +45,7 @@ export default function Home() {
         is so coveted, they might feel justified to say something like:
       </div>
       <div className='quote'>
-        Alright I'll take the ice cream ...if you give me 10 bucks!
+        Alright I'll take the ice cream<br/>... if you give me 10 bucks!
       </div>
       <div>
         You're better off accepting an offer than making one, and that's why

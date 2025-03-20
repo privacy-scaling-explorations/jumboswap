@@ -32,7 +32,7 @@
 .quote {
   padding: 1rem;
   font-style: italic;
-  text-wrap: balance;
+  text-align: center;
 }
 
 .subheading {
