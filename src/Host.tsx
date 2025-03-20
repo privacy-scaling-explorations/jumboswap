@@ -17,7 +17,7 @@ export default function Host() {
     <div>
       <h1>Host</h1>
       <p>
-        Get your friend to scan:
+        Get your friends to scan:
       </p>
       <center>
         <QRCodeCanvas
