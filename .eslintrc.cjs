@@ -36,5 +36,6 @@ module.exports = {
     'capitalized-comments': 'off',
     'no-await-in-loop': 'off',
     'generator-star-spacing': 'off',
+    'no-return-await': 'off',
   },
 };
