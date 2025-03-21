@@ -81,38 +81,44 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
 
     this.peer = new Peer(this.hostPeerId, { config: rtcConfig });
 
-    this.peer.on('connection', conn => {
-      const connEntry: ConnEntry = { conn };
-      this.connections.push(connEntry);
+    this.peer.on('open', () => {
+      console.log('listening for connections', this.hostPeerId);
 
-      conn.once('data', data => {
-        const m = decodeMessage(
-          this.roomCipher,
-          data,
-          e => this.emit('error', e),
-        );
+      this.peer.on('connection', conn => {
+        console.log('new connection');
+        const connEntry: ConnEntry = { conn };
+        this.connections.push(connEntry);
 
-        if (!m) {
-          return;
-        }
+        conn.once('data', data => {
+          const m = decodeMessage(
+            this.roomCipher,
+            data,
+            e => this.emit('error', e),
+          );
 
-        const parsed = PublicKey.safeParse(m.message);
+          if (!m) {
+            return;
+          }
 
-        if (!parsed.data) {
-          this.emit('error', new Error('Unexpected message'));
-          return;
-        }
+          const parsed = PublicKey.safeParse(m.message);
 
-        this.addMember(connEntry, parsed.data);
-      });
+          if (!parsed.data) {
+            this.emit('error', new Error('Unexpected message'));
+            return;
+          }
 
-      conn.once('close', () => {
-        const len = this.connections.length;
-        this.connections = this.connections.filter(ce => ce !== connEntry);
+          this.addMember(connEntry, parsed.data);
+        });
 
-        if (this.connections.length !== len) {
-          this.broadcastMembers();
-        }
+        conn.once('close', () => {
+          console.log('joiner closed');
+          const len = this.connections.length;
+          this.connections = this.connections.filter(ce => ce !== connEntry);
+
+          if (this.connections.length !== len) {
+            this.broadcastMembers();
+          }
+        });
       });
     });
   }
@@ -163,6 +169,7 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
 
   broadcastMembers() {
     const members = this.getMembers();
+    console.log('broadcasting members', members);
 
     for (const { conn } of this.connections) {
       conn.send(this.roomCipher.encrypt(members));
@@ -177,6 +184,8 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
 export class JoinedRoom extends EventEmitter<RoomEvents> implements IRoom {
   roomKey: Key;
   roomCipher: Cipher;
+  hostPeerId: string;
+  peer: Peer;
 
   members: PublicKey[] = [];
   socketSet: SocketSet;
@@ -189,13 +198,24 @@ export class JoinedRoom extends EventEmitter<RoomEvents> implements IRoom {
     super();
 
     this.roomKey = Key.fromSeed(roomCode);
-    const roomCipher = new Cipher(this.roomKey);
-    this.roomCipher = roomCipher;
+    this.roomCipher = new Cipher(this.roomKey);
     this.socketSet = new SocketSet(roomCode, id, pk);
-    const hostPeerId = `room-host-${Key.fromSeed(this.roomKey.data).base58()}`;
+    this.hostPeerId = `room-host-${Key.fromSeed(this.roomKey.data).base58()}`;
 
     const peer = new Peer({ config: rtcConfig });
-    const conn = peer.connect(hostPeerId, { reliable: true });
+    this.peer = peer;
+
+    this.setup();
+  }
+
+  async setup() {
+    await new Promise<void>((resolve, reject) => {
+      this.peer.on('open', () => resolve());
+      this.peer.on('close', reject);
+    });
+
+    console.log('connecting', this.hostPeerId);
+    const conn = this.peer.connect(this.hostPeerId, { reliable: true });
 
     conn.on('data', data => {
       const m = decodeMessage(
@@ -219,18 +239,12 @@ export class JoinedRoom extends EventEmitter<RoomEvents> implements IRoom {
       this.emit('membersChanged', this.members);
     });
 
-    (async () => {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          conn.on('open', resolve);
-          conn.on('close', reject);
-        });
+    await new Promise<void>((resolve, reject) => {
+      conn.on('open', resolve);
+      conn.on('close', reject);
+    });
 
-        conn.send(roomCipher.encrypt(this.pk));
-      } catch (e) {
-        this.emit('error', ensureError(e));
-      }
-    })();
+    conn.send(this.roomCipher.encrypt(this.pk));
   }
 
   getSocket(to: PublicKey): Promise<RtcPairSocket> {

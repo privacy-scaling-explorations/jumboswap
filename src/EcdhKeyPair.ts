@@ -16,7 +16,16 @@ export default class EcdhKeyPair {
   ) {}
 
   static async get(name: string) {
-    const storageKey = `ecdh-key-pair-${name}`;
+    const parts = ['ecdh', 'key', 'pair', name];
+
+    const url = new URL(window.location.href);
+    const searchId = url.searchParams.get('id');
+
+    if (searchId) {
+      parts.push(searchId);
+    }
+
+    const storageKey = parts.join('-');
     const stored = localStorage.getItem(storageKey);
 
     if (stored !== null) {

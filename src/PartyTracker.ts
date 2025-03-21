@@ -4,6 +4,7 @@ import { Party } from './Ctx';
 import { PublicKey } from './EcdhKeyPair';
 import { Key } from 'rtc-pair-socket';
 import { z } from 'zod';
+import bufferCmp from './bufferCmp';
 
 type Events = {
   partiesUpdated(parties: Party[]): void;
@@ -50,6 +51,11 @@ export default class PartyTracker extends EventEmitter<Events> {
   }
 
   async pingLoop(memberId: string, otherPk: PublicKey) {
+    if (bufferCmp(this.pk.publicKey, otherPk.publicKey) === 0) {
+      // Don't ping self
+      return;
+    }
+
     const socket = await this.room.getSocket(otherPk);
 
     {

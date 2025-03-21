@@ -88,7 +88,10 @@ export default function Home() {
         </div>
       </div>
       <div className='main buttons'>
-        <button onClick={() => ctx.page.set('Invite')}>
+        <button onClick={() => {
+          ctx.host();
+          ctx.page.set('Invite');
+        }}>
           Host
         </button>
         <button onClick={() => ctx.page.set('Join')}>
