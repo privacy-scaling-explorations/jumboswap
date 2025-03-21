@@ -56,6 +56,7 @@ export default class PartyTracker extends EventEmitter<Events> {
       return;
     }
 
+    let lastPing = 0;
     const socket = await this.room.getSocket(otherPk);
 
     {
@@ -101,6 +102,14 @@ export default class PartyTracker extends EventEmitter<Events> {
           if (gotReply) {
             break;
           }
+
+          const cumulPing = Date.now() - pingStart;
+
+          if (cumulPing > lastPing) {
+            lastPing = cumulPing;
+            this.partiesById[memberId].ping = cumulPing;
+            this.emitPartiesUpdated();
+          }
         }
       })();
 
@@ -131,6 +140,7 @@ export default class PartyTracker extends EventEmitter<Events> {
 
       this.partiesById[memberId].ping = pingEnd - pingStart;
       this.emitPartiesUpdated();
+      lastPing = pingEnd - pingStart;
 
       await new Promise(resolve => {
         setTimeout(resolve, 1000);
