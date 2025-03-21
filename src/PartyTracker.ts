@@ -32,29 +32,51 @@ export default class PartyTracker extends EventEmitter<Events> {
 
     room.on('membersChanged', members => {
       console.log('membersChanged', members);
-      this.memberIds = members.map(m => Key.fromSeed(m).base58());
-
-      for (const [i, memberId] of this.memberIds.entries()) {
-        if (!(memberId in this.partiesById)) {
-          this.partiesById[memberId] = {
-            name: '',
-            item: '',
-            ready: false,
-            ping: undefined,
-          };
-
-          this.pingLoop(memberId, members[i]);
-        }
-      }
-
-      for (const key of Object.keys(this.partiesById)) {
-        if (!this.memberIds.includes(key)) {
-          delete this.partiesById[key];
-        }
-      }
-
-      this.emitPartiesUpdated();
+      this.setMembers(members);
     });
+  }
+
+  setMembers(members: PublicKey[]) {
+    this.memberIds = members.map(m => Key.fromSeed(m).base58());
+
+    for (const [i, memberId] of this.memberIds.entries()) {
+      if (!(memberId in this.partiesById)) {
+        this.partiesById[memberId] = {
+          name: '',
+          item: '',
+          ready: false,
+          ping: undefined,
+        };
+
+        this.pingLoop(memberId, members[i]);
+      }
+    }
+
+    for (const key of Object.keys(this.partiesById)) {
+      if (!this.memberIds.includes(key)) {
+        delete this.partiesById[key];
+      }
+    }
+
+    this.emitPartiesUpdated();
+  }
+
+  getSelf() {
+    const selfId = Key.fromSeed(this.pk).base58();
+    let self = this.partiesById[selfId];
+
+    if (!self) {
+      self = {
+        name: '',
+        item: '',
+        ready: false,
+        ping: undefined,
+      };
+
+      this.partiesById[selfId] = self;
+    }
+
+    return self;
   }
 
   async pingLoop(memberId: string, otherPk: PublicKey) {

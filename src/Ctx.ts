@@ -52,6 +52,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
   errorMsg = new UsableField<string>('');
   choice = new UsableField<GameOption | undefined>(undefined);
   mpcProgress = new UsableField<number>(0);
+  partyTracker?: PartyTracker;
   parties = new UsableField<Party[]>([{ name: '', item: '', ready: false }]);
   room?: IRoom;
 
@@ -67,7 +68,9 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
     this.room = await Room.host(this.roomCode.value, id);
 
     const partyTracker = new PartyTracker(pk, this.room);
+    partyTracker.setMembers([pk]);
     partyTracker.on('partiesUpdated', parties => this.parties.set(parties));
+    this.partyTracker = partyTracker;
   }
 
   async join(roomCode: string) {
@@ -89,6 +92,30 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
     });
 
     this.page.set('Lobby');
+  }
+
+  setName(name: string) {
+    if (!this.partyTracker) {
+      return;
+    }
+
+    const selfParty = this.partyTracker.getSelf();
+    selfParty.name = name;
+    this.partyTracker.emitPartiesUpdated();
+
+    // TODO: Broadcast
+  }
+
+  setItem(item: string) {
+    if (!this.partyTracker) {
+      return;
+    }
+
+    const selfParty = this.partyTracker.getSelf();
+    selfParty.item = item;
+    this.partyTracker.emitPartiesUpdated();
+
+    // TODO: Broadcast
   }
 
   async runProtocol(socket: RtcPairSocket) {

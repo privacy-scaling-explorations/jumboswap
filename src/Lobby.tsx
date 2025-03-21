@@ -28,10 +28,16 @@ export default function Lobby() {
       <div>
         <form className='form-grid'>
           <label htmlFor='name'>Your name:</label>
-          <input type='text' id='name' name='name' disabled={ready} />
+          <input type='text' id='name' name='name' disabled={ready} onInput={evt => {
+            const input = evt.target as HTMLInputElement;
+            ctx.setName(input.value);
+          }} />
 
           <label htmlFor='item'>Swapping item:</label>
-          <input type='text' id='item' name='item' disabled={ready} />
+          <input type='text' id='item' name='item' disabled={ready} onInput={evt => {
+            const input = evt.target as HTMLInputElement;
+            ctx.setItem(input.value);
+          }} />
         </form>
       </div>
       <div>
