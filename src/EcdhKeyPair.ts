@@ -1,9 +1,13 @@
 import { pack, unpack } from 'msgpackr';
 import { Key } from 'rtc-pair-socket';
+import { z } from 'zod';
 
-export type PublicKey = {
-  publicKey: Uint8Array;
-};
+export const PublicKey = z.object({
+  publicKey: z.instanceof(Uint8Array),
+});
+
+// eslint-disable-next-line no-redeclare
+export type PublicKey = z.TypeOf<typeof PublicKey>;
 
 export default class EcdhKeyPair {
   private constructor(
