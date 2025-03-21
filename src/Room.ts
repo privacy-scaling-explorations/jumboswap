@@ -110,6 +110,15 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
           this.addMember(connEntry, parsed.data);
         });
 
+        console.log('joiner conn state', conn.peerConnection.connectionState);
+        conn.peerConnection.addEventListener('connectionstatechange', () => {
+          console.log('joiner conn state', conn.peerConnection.connectionState);
+
+          if (conn.peerConnection.connectionState === 'failed') {
+            conn.close();
+          }
+        });
+
         conn.once('close', () => {
           console.log('joiner closed');
           const len = this.connections.length;
@@ -218,6 +227,10 @@ export class JoinedRoom extends EventEmitter<RoomEvents> implements IRoom {
 
     console.log('connecting', this.hostPeerId);
     const conn = this.peer.connect(this.hostPeerId, { reliable: true });
+
+    window.addEventListener('close', () => {
+      conn.close();
+    });
 
     conn.on('data', data => {
       const m = decodeMessage(
