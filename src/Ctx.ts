@@ -72,6 +72,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
 
   async join(roomCode: string) {
     this.mode.set('Join');
+    this.roomCode.set(roomCode);
 
     const id = await EcdhKeyPair.get('jumboswap');
     const pk = await id.encodePublicKey();
