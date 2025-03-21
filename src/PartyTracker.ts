@@ -88,7 +88,7 @@ export default class PartyTracker extends EventEmitter<Events> {
     while (true) {
       const pingStart = Date.now();
       const pingId = Math.random();
-      const gotReply = false;
+      let gotReply = false;
 
       (async () => {
         while (true) {
@@ -119,6 +119,7 @@ export default class PartyTracker extends EventEmitter<Events> {
             return;
           }
 
+          gotReply = true;
           socket.off('message', checkPong);
           resolve();
         }
