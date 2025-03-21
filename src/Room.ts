@@ -174,6 +174,8 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
     for (const { conn } of this.connections) {
       conn.send(this.roomCipher.encrypt(members));
     }
+
+    this.emit('membersChanged', members);
   }
 
   close() {
