@@ -16,6 +16,7 @@ export type IRoom = {
   getMembers(): PublicKey[];
   getSocket(to: PublicKey): Promise<RtcPairSocket>;
   send(to: PublicKey, data: unknown): void;
+  broadcast(data: unknown): void;
 } & InstanceType<typeof EventEmitter<RoomEvents>>;
 
 export default class Room {
@@ -136,6 +137,12 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
     });
   }
 
+  broadcast(data: unknown): void {
+    for (const member of this.getMembers().slice(1)) {
+      this.send(member, data);
+    }
+  }
+
   getSocket(to: PublicKey): Promise<RtcPairSocket> {
     return this.socketSet.get(to);
   }
@@ -221,6 +228,14 @@ export class JoinedRoom extends EventEmitter<RoomEvents> implements IRoom {
     this.peer = peer;
 
     this.setup();
+  }
+
+  broadcast(data: unknown): void {
+    for (const member of this.getMembers()) {
+      if (bufferCmp(member.publicKey, this.pk.publicKey) !== 0) {
+        this.send(member, data);
+      }
+    }
   }
 
   async setup() {
