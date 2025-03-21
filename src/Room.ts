@@ -130,6 +130,10 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
         });
       });
     });
+
+    detectDroppedMembers(this, droppedMember => {
+      this.socketSet.drop(droppedMember);
+    });
   }
 
   getSocket(to: PublicKey): Promise<RtcPairSocket> {
@@ -260,6 +264,10 @@ export class JoinedRoom extends EventEmitter<RoomEvents> implements IRoom {
     });
 
     conn.send(this.roomCipher.encrypt(this.pk));
+
+    detectDroppedMembers(this, droppedMember => {
+      this.socketSet.drop(droppedMember);
+    });
   }
 
   getSocket(to: PublicKey): Promise<RtcPairSocket> {
@@ -297,11 +305,27 @@ class SocketSet {
     let socketPromise = this.socketPromises[recordKey];
 
     if (!socketPromise) {
+      console.log('connecting new socket', externalPk);
       socketPromise = this.connect(externalPk); // *Not* awaited
       this.socketPromises[recordKey] = socketPromise;
     }
 
     return await socketPromise;
+  }
+
+  drop(externalPk: PublicKey) {
+    const recordKey = Key.fromSeed(externalPk).base58();
+    const socketPromise = this.socketPromises[recordKey];
+
+    if (!socketPromise) {
+      return;
+    }
+
+    socketPromise.then(socket => {
+      socket.close();
+    });
+
+    delete this.socketPromises[recordKey];
   }
 
   private async connect(externalPk: PublicKey) {
@@ -333,4 +357,28 @@ class SocketSet {
 
 function ensureError(err: unknown): Error {
   return err instanceof Error ? err : new Error(JSON.stringify(err));
+}
+
+function detectDroppedMembers(
+  room: IRoom,
+  onDrop: (member: PublicKey) => void,
+) {
+  let lastMembers = room.getMembers();
+
+  room.on('membersChanged', () => {
+    const newMembers = room.getMembers();
+
+    for (const member of lastMembers) {
+      const match = newMembers.find(
+        nm => bufferCmp(nm.publicKey, member.publicKey) === 0,
+      );
+
+      if (!match) {
+        console.log('drop detected', member);
+        onDrop(member);
+      }
+    }
+
+    lastMembers = newMembers;
+  });
 }

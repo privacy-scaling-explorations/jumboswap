@@ -31,6 +31,7 @@ export default class PartyTracker extends EventEmitter<Events> {
     super();
 
     room.on('membersChanged', members => {
+      console.log('membersChanged', members);
       this.memberIds = members.map(m => Key.fromSeed(m).base58());
 
       for (const [i, memberId] of this.memberIds.entries()) {
@@ -43,6 +44,12 @@ export default class PartyTracker extends EventEmitter<Events> {
           };
 
           this.pingLoop(memberId, members[i]);
+        }
+      }
+
+      for (const key of Object.keys(this.partiesById)) {
+        if (!this.memberIds.includes(key)) {
+          delete this.partiesById[key];
         }
       }
 
@@ -86,13 +93,13 @@ export default class PartyTracker extends EventEmitter<Events> {
       });
     }
 
-    while (true) {
+    while (!socket.isClosed()) {
       const pingStart = Date.now();
       const pingId = Math.random();
       let gotReply = false;
 
       (async () => {
-        while (true) {
+        while (!socket.isClosed()) {
           socket.send({ type: 'ping', pingId });
 
           await new Promise(resolve => {
@@ -130,6 +137,7 @@ export default class PartyTracker extends EventEmitter<Events> {
 
           gotReply = true;
           socket.off('message', checkPong);
+          socket.off('close', reject);
           resolve();
         }
 
