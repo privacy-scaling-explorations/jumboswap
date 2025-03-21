@@ -20,7 +20,7 @@ export default function Lobby() {
           <>
             <div key={100 * i + 0}>{party.name}</div>
             <div key={100 * i + 1}>{party.item}</div>
-            <div className='ping-cell' key={100 * i + 3}>{party.ping}ms</div>
+            <div className='ping-cell' key={100 * i + 3}>{party.ping}{party.ping === undefined ? '' : 'ms'}</div>
             <div className='ready-cell' key={100 * i + 2} style={{ transform: party.ready ? '' : 'scaleX(-1)' }}>{party.ready ? '✅' : '✏️'}</div>
           </>
         ))}
