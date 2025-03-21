@@ -36,6 +36,13 @@ export default function Lobby() {
       </div>
       <div>
         <button
+          className='secondary'
+          style={{ width: '100%', lineHeight: '1.1em' }}
+          onClick={() => ctx.page.set('Invite')}
+        >Invite</button>
+      </div>
+      <div>
+        <button
           className={ready ? 'secondary' : ''}
           style={{ width: '100%', lineHeight: '1.1em' }}
           onClick={() => setReady(!ready)}

@@ -4,6 +4,7 @@ import EcdhKeyPair, { PublicKey } from './EcdhKeyPair';
 import { Cipher, Key, RtcPairSocket } from 'rtc-pair-socket';
 import bufferCmp from './bufferCmp';
 import { z } from 'zod';
+import { rtcConfig } from './Ctx';
 
 type RoomEvents = {
   error(error: Error): void;
@@ -11,12 +12,11 @@ type RoomEvents = {
   membersChanged(members: PublicKey[]): void;
 };
 
-type IRoom = {
+export type IRoom = {
   getMembers(): PublicKey[];
+  getSocket(to: PublicKey): Promise<RtcPairSocket>;
   send(to: PublicKey, data: unknown): void;
 } & InstanceType<typeof EventEmitter<RoomEvents>>;
-
-const rtcConfig = undefined; // TODO
 
 export default class Room {
   private constructor() {}
@@ -115,6 +115,10 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
         }
       });
     });
+  }
+
+  getSocket(to: PublicKey): Promise<RtcPairSocket> {
+    return this.socketSet.get(to);
   }
 
   getMembers(): PublicKey[] {
@@ -227,6 +231,10 @@ export class JoinedRoom extends EventEmitter<RoomEvents> implements IRoom {
         this.emit('error', ensureError(e));
       }
     })();
+  }
+
+  getSocket(to: PublicKey): Promise<RtcPairSocket> {
+    return this.socketSet.get(to);
   }
 
   getMembers(): PublicKey[] {

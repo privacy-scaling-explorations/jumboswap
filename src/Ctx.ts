@@ -5,13 +5,16 @@ import Emitter from './Emitter';
 import AsyncQueue from './AsyncQueue';
 import runProtocol from './runProtocol';
 import { makeZodChannel } from './ZodChannel';
-import { MessageInit, MessageReady, MessageStart } from './MessageTypes';
+import { MessageReady } from './MessageTypes';
 import { Key, RtcPairSocket } from 'rtc-pair-socket';
+import Room, { IRoom } from './Room';
+import EcdhKeyPair from './EcdhKeyPair';
+import PartyTracker from './PartyTracker';
 
 type PageKind =
   | 'Home'
   | 'Share'
-  | 'Host'
+  | 'Invite'
   | 'Join'
   | 'Connecting'
   | 'Lobby'
@@ -22,7 +25,7 @@ type PageKind =
 
 export type GameOption = 'rock' | 'paper' | 'scissors' | 'lizard' | 'spock';
 
-const rtcConfig = (() => {
+export const rtcConfig = (() => {
   const envVar = import.meta.env.VITE_RTC_CONFIGURATION;
 
   if (!envVar) {
@@ -32,98 +35,57 @@ const rtcConfig = (() => {
   return JSON.parse(envVar);
 })();
 
-type Party = {
+export type Party = {
   name: string;
   item: string;
   ready: boolean;
-  ping: number;
+  ping?: number;
 };
 
 export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
   page = new UsableField<PageKind>('Home');
   mode = new UsableField<'Host' | 'Join'>('Host');
-  key = new UsableField(Key.random());
+  roomCode = new UsableField(Key.random().base58());
   socket = new UsableField<RtcPairSocket | undefined>(undefined);
   friendReady = false;
   result = new UsableField<'win' | 'lose' | 'draw' | undefined>(undefined);
   errorMsg = new UsableField<string>('');
   choice = new UsableField<GameOption | undefined>(undefined);
   mpcProgress = new UsableField<number>(0);
-  parties = new UsableField<Party[]>([
-    {
-      name: 'Alice', item: 'Cake', ready: false, ping: 87,
-    },
-    {
-      name: 'Bob', item: 'Salad', ready: false, ping: 123,
-    },
-    {
-      name: 'Charlie', item: 'Bicycle', ready: true, ping: 2116,
-    },
-  ]);
+  parties = new UsableField<Party[]>([{ name: '', item: '', ready: false }]);
+  room?: IRoom;
 
   constructor() {
     super();
   }
 
-  async connect(): Promise<RtcPairSocket> {
-    if (this.socket.value) {
-      if (this.socket.value.pairingCode === this.key.value.base58()) {
-        return this.socket.value;
-      }
-
-      this.socket.value.close();
-    }
-
-    console.log('connecting', this.key.value.base58(), this.mode);
-
-    const socket = new RtcPairSocket(
-      this.key.value.base58(),
-      this.mode.value === 'Host' ? 'alice' : 'bob',
-      rtcConfig,
-    );
-
-    this.socket.set(socket);
-
-    // eslint-disable-next-line no-return-await
-    return await new Promise(resolve => {
-      socket.on('open', () => resolve(socket));
-    });
-  }
-
   async host() {
     this.mode.set('Host');
-    const socket = await this.connect();
 
-    socket.removeAllListeners('message');
+    const id = await EcdhKeyPair.get('jumboswap');
+    const pk = await id.encodePublicKey();
+    this.room = await Room.host(this.roomCode.value, id);
 
-    socket.on('message', message => {
-      if (!MessageInit.safeParse(message).error) {
-        socket.send({ from: 'host', type: 'start' });
-        this.runProtocol(socket).catch(this.handleProtocolError);
-      }
-    });
+    const partyTracker = new PartyTracker(pk, this.room);
+    partyTracker.on('partiesUpdated', parties => this.parties.set(parties));
   }
 
-  async join(keyBase58: string) {
-    if (this.key.value.base58() === keyBase58) {
-      return;
-    }
+  async join(roomCode: string) {
+    const id = await EcdhKeyPair.get('jumboswap');
+    const pk = await id.encodePublicKey();
+    const room = await Room.join(roomCode, id);
+    this.room = room;
+
+    const partyTracker = new PartyTracker(pk, this.room);
+    partyTracker.on('partiesUpdated', parties => this.parties.set(parties));
 
     this.page.set('Connecting');
 
-    this.mode.set('Join');
-    this.key.set(Key.fromBase58(keyBase58));
-    const socket = await this.connect();
-    socket.send({ from: 'joiner', type: 'init' });
+    await new Promise(resolve => {
+      room.once('membersChanged', resolve);
+    });
 
-    const listener = (message: unknown) => {
-      if (!MessageStart.safeParse(message).error) {
-        socket.off('message', listener);
-        this.runProtocol(socket).catch(this.handleProtocolError);
-      }
-    };
-
-    socket.on('message', listener);
+    this.page.set('Lobby');
   }
 
   async runProtocol(socket: RtcPairSocket) {

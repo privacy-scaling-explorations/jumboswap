@@ -4,7 +4,7 @@ import Lobby from './Lobby';
 import Ctx from './Ctx';
 import Error from './Error';
 import Home from './Home';
-import Host from './Host';
+import Invite from './Invite';
 import Join from './Join';
 import Result from './Result';
 import Share from './Share';
@@ -32,8 +32,8 @@ function App() {
     content = <Home />;
   } else if (page === 'Share') {
     content = <Share />;
-  } else if (page === 'Host') {
-    content = <Host />;
+  } else if (page === 'Invite') {
+    content = <Invite />;
   } else if (page === 'Join') {
     content = <Join />;
   } else if (page === 'Connecting') {

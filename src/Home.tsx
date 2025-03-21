@@ -11,14 +11,6 @@ export default function Home() {
       <div>
         Discover swapping opportunities using MPC.
       </div>
-      <div className='main buttons'>
-        <button onClick={() => ctx.page.set('Host')}>
-          Host
-        </button>
-        <button onClick={() => ctx.page.set('Join')}>
-          Join
-        </button>
-      </div>
       <div>
         Imagine 5 friends each have a dessert. They might prefer other desserts,
         but finding swaps that make everyone happy is difficult.
@@ -96,7 +88,7 @@ export default function Home() {
         </div>
       </div>
       <div className='main buttons'>
-        <button onClick={() => ctx.page.set('Host')}>
+        <button onClick={() => ctx.page.set('Invite')}>
           Host
         </button>
         <button onClick={() => ctx.page.set('Join')}>

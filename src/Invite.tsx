@@ -1,21 +1,18 @@
 import CopyToClipboard from 'react-copy-to-clipboard';
 import Ctx from './Ctx';
 import { QRCodeCanvas } from 'qrcode.react';
-import { useEffect } from 'react';
 
-export default function Host() {
+export default function Invite() {
   const ctx = Ctx.use();
-  const key = ctx.key.use();
-
-  const code = key.base58();
-
-  useEffect(() => {
-    ctx.host();
-  }, [ctx]);
+  const roomCode = ctx.roomCode.use();
+  const parties = ctx.parties.use();
 
   return (
     <div>
-      <h1>Host</h1>
+      <h1>Invite</h1>
+      <p>
+        Party size: {parties.length}{parties.length === 1 ? ' (just you)' : ''}
+      </p>
       <p>
         Get your friends to scan:
       </p>
@@ -23,14 +20,19 @@ export default function Host() {
         <QRCodeCanvas
           style={{ width: '100%', height: 'auto' }}
           bgColor='transparent'
-          value={`${window.location.origin}${window.location.pathname}#${code}`}
+          value={`${window.location.origin}${window.location.pathname}#${roomCode}`}
         />
       </center>
       <p>
-        Or <CopyToClipboard text={code}>
+        Or <CopyToClipboard text={roomCode}>
           <button style={{ padding: '0.5rem' }}>copy</button>
         </CopyToClipboard> it and send.
       </p>
+      <div className='main buttons'>
+        <button onClick={() => {
+          ctx.page.set('Lobby');
+        }}>View Lobby</button>
+      </div>
     </div>
   );
 }
