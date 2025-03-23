@@ -20,6 +20,24 @@ const Pong = z.object({
   pingId: z.number(),
 });
 
+const PartyUpdate = z.object({
+  type: z.literal('partyUpdate'),
+  partyUpdate: z.object({
+    name: z.string(),
+    item: z.string(),
+    ready: z.boolean(),
+  }).partial(),
+});
+
+function defaultParty(): Party {
+  return {
+    name: '',
+    item: '',
+    ready: false,
+    ping: undefined,
+  };
+}
+
 export default class PartyTracker extends EventEmitter<Events> {
   partiesById: Record<string, Party> = {};
   memberIds: string[] = [];
@@ -34,10 +52,28 @@ export default class PartyTracker extends EventEmitter<Events> {
       console.log('membersChanged', members);
       this.setMembers(members);
     });
+
+    room.on('message', (from, data) => {
+      const parsed = PartyUpdate.safeParse(data);
+
+      if (!parsed.success) {
+        return;
+      }
+
+      const memberId = toPartyId(from);
+
+      const party = {
+        ...(this.partiesById[memberId] ?? defaultParty()),
+        ...parsed.data.partyUpdate,
+      };
+
+      this.partiesById[memberId] = party;
+      this.emitPartiesUpdated();
+    });
   }
 
   setMembers(members: PublicKey[]) {
-    this.memberIds = members.map(m => Key.fromSeed(m).base58());
+    this.memberIds = members.map(toPartyId);
 
     for (const [i, memberId] of this.memberIds.entries()) {
       if (!(memberId in this.partiesById)) {
@@ -62,21 +98,26 @@ export default class PartyTracker extends EventEmitter<Events> {
   }
 
   getSelf() {
-    const selfId = Key.fromSeed(this.pk).base58();
+    const selfId = toPartyId(this.pk);
     let self = this.partiesById[selfId];
 
     if (!self) {
-      self = {
-        name: '',
-        item: '',
-        ready: false,
-        ping: undefined,
-      };
-
+      self = defaultParty();
       this.partiesById[selfId] = self;
     }
 
     return self;
+  }
+
+  updateSelf(partyUpdate: Partial<Exclude<Party, 'ping'>>) {
+    const selfParty = { ...this.getSelf(), ...partyUpdate };
+    this.partiesById[toPartyId(this.pk)] = selfParty;
+    this.emitPartiesUpdated();
+
+    this.room.broadcast({
+      type: 'partyUpdate',
+      partyUpdate,
+    });
   }
 
   async pingLoop(memberId: string, otherPk: PublicKey) {
@@ -182,4 +223,8 @@ export default class PartyTracker extends EventEmitter<Events> {
     const parties = this.memberIds.map(mId => this.partiesById[mId]);
     this.emit('partiesUpdated', parties);
   }
+}
+
+function toPartyId(pk: PublicKey) {
+  return Key.fromSeed(pk).base58();
 }

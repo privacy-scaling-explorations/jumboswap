@@ -84,6 +84,7 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
 
     const partyTracker = new PartyTracker(pk, this.room);
     partyTracker.on('partiesUpdated', parties => this.parties.set(parties));
+    this.partyTracker = partyTracker;
 
     this.page.set('Connecting');
 
@@ -92,30 +93,6 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
     });
 
     this.page.set('Lobby');
-  }
-
-  setName(name: string) {
-    if (!this.partyTracker) {
-      return;
-    }
-
-    const selfParty = this.partyTracker.getSelf();
-    selfParty.name = name;
-    this.partyTracker.emitPartiesUpdated();
-
-    // TODO: Broadcast
-  }
-
-  setItem(item: string) {
-    if (!this.partyTracker) {
-      return;
-    }
-
-    const selfParty = this.partyTracker.getSelf();
-    selfParty.item = item;
-    this.partyTracker.emitPartiesUpdated();
-
-    // TODO: Broadcast
   }
 
   async runProtocol(socket: RtcPairSocket) {

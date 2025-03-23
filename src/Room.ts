@@ -78,7 +78,13 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
     this.hostPeerId = `room-host-${Key.fromSeed(this.roomKey.data).base58()}`;
     this.id = id;
     this.pk = pk;
-    this.socketSet = new SocketSet(roomCode, this.id, this.pk);
+
+    this.socketSet = new SocketSet(
+      roomCode,
+      this.id,
+      this.pk,
+      (from, data) => this.emit('message', from, data),
+    );
 
     this.peer = new Peer(this.hostPeerId, { config: rtcConfig });
 
@@ -221,7 +227,14 @@ export class JoinedRoom extends EventEmitter<RoomEvents> implements IRoom {
 
     this.roomKey = Key.fromSeed(roomCode);
     this.roomCipher = new Cipher(this.roomKey);
-    this.socketSet = new SocketSet(roomCode, id, pk);
+
+    this.socketSet = new SocketSet(
+      roomCode,
+      id,
+      pk,
+      (from, data) => this.emit('message', from, data),
+    );
+
     this.hostPeerId = `room-host-${Key.fromSeed(this.roomKey.data).base58()}`;
 
     const peer = new Peer({ config: rtcConfig });
@@ -312,6 +325,7 @@ class SocketSet {
     public context: unknown,
     public id: EcdhKeyPair,
     public pk: PublicKey,
+    public onMessage: (from: PublicKey, data: unknown) => void,
   ) {}
 
   async get(externalPk: PublicKey) {
@@ -360,6 +374,8 @@ class SocketSet {
       side,
       rtcConfig,
     );
+
+    socket.on('message', data => this.onMessage(externalPk, data));
 
     await new Promise<void>((resolve, reject) => {
       socket.on('open', resolve);

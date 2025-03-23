@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import './Lobby.css';
 import Ctx from './Ctx';
 
@@ -6,7 +5,14 @@ export default function Lobby() {
   const ctx = Ctx.use();
   const mode = ctx.mode.use();
   const parties = ctx.parties.use();
-  const [ready, setReady] = useState(false);
+
+  const { partyTracker } = ctx;
+
+  if (!partyTracker) {
+    return <div>Error: Party tracker is undefined</div>;
+  }
+
+  const { ready } = partyTracker.getSelf();
 
   return (
     <div className='lobby-page' style={{ WebkitTapHighlightColor: 'transparent' }}>
@@ -30,13 +36,13 @@ export default function Lobby() {
           <label htmlFor='name'>Your name:</label>
           <input type='text' id='name' name='name' disabled={ready} onInput={evt => {
             const input = evt.target as HTMLInputElement;
-            ctx.setName(input.value);
+            partyTracker.updateSelf({ name: input.value });
           }} />
 
           <label htmlFor='item'>Swapping item:</label>
           <input type='text' id='item' name='item' disabled={ready} onInput={evt => {
             const input = evt.target as HTMLInputElement;
-            ctx.setItem(input.value);
+            partyTracker.updateSelf({ item: input.value });
           }} />
         </form>
       </div>
@@ -51,7 +57,9 @@ export default function Lobby() {
         <button
           className={ready ? 'secondary' : ''}
           style={{ width: '100%', lineHeight: '1.1em' }}
-          onClick={() => setReady(!ready)}
+          onClick={() => {
+            partyTracker.updateSelf({ ready: !ready });
+          }}
         >{ready ? 'Change Details' : 'I\'m Ready'}</button>
       </div>
       {mode === 'Host' && <>
