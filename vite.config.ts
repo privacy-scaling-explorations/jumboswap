@@ -5,4 +5,7 @@ import react from '@vitejs/plugin-react-swc';
 export default defineConfig({
   base: process.env.VITE_JUMBOSWAP_BASE ?? '/jumboswap/',
   plugins: [react()],
+  build: {
+    minify: false, // Because genCircuit relies on function.toString
+  },
 });
