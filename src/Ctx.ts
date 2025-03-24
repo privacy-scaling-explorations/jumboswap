@@ -95,10 +95,6 @@ export default class Ctx extends EventEmitter<{ everyoneReady(): void }> {
       const id = await EcdhKeyPair.get('jumboswap');
       const pk = await id.encodePublicKey();
       this.pk.set(pk);
-
-      const publicInputs = structuredClone(this.publicInputs.value);
-      publicInputs[1].pk = pk;
-      this.publicInputs.set(publicInputs);
     })();
   }
 
@@ -216,7 +212,7 @@ export default class Ctx extends EventEmitter<{ everyoneReady(): void }> {
         return;
       }
 
-      const readyFlags = this.readyFlags.value!;
+      const readyFlags = structuredClone(this.readyFlags.value!);
       readyFlags[partyIndex] = true;
       this.readyFlags.set(readyFlags);
 

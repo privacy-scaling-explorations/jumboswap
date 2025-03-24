@@ -10,6 +10,30 @@ import AsyncQueue from './AsyncQueue';
 import { PublicKey } from './EcdhKeyPair';
 import bufferCmp from './bufferCmp';
 
+const partySizeToHostTotalBytes = [
+  0,
+  0,
+  241085,
+  396906,
+  2852289,
+  18799596,
+  100000000,
+  1000000000,
+  10000000000,
+];
+
+const partySizeToJoinerTotalBytes = [
+  0,
+  0,
+  241085,
+  368145,
+  2383463,
+  13823445,
+  100000000,
+  1000000000,
+  10000000000,
+];
+
 // eslint-disable-next-line max-params
 export default async function runProtocol(
   partyIndex: number,
@@ -21,6 +45,10 @@ export default async function runProtocol(
   onProgress: (progress: number) => void = () => {},
 ): Promise<number[]> {
   let bytesTransferred = 0;
+  const totalBytes = partyIndex === 0
+    ? partySizeToHostTotalBytes[publicInputs.length] ?? Infinity
+    : partySizeToJoinerTotalBytes[publicInputs.length] ?? Infinity;
+
   const rand = 1.1; // TODO: Use randMsgQueue to get a fair random number
 
   await summon.init();
@@ -55,7 +83,7 @@ export default async function runProtocol(
       });
 
       bytesTransferred += msg.length;
-      onProgress(bytesTransferred);
+      onProgress(bytesTransferred / totalBytes);
     },
   );
 
@@ -64,7 +92,7 @@ export default async function runProtocol(
       if (bufferCmp(publicInputs[i].pk.publicKey, from.publicKey) === 0) {
         session.handleMessage(`party${i}`, data);
         bytesTransferred += data.length;
-        onProgress(bytesTransferred);
+        onProgress(bytesTransferred / totalBytes);
         return;
       }
     }
