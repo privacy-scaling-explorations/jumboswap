@@ -2,11 +2,16 @@ import Ctx from './Ctx';
 import './ChooseItems.css';
 import bufferCmp from './bufferCmp';
 import YesNoPill from './YesNoPill';
+import { useState } from 'react';
 
 export default function ChooseItems() {
   const ctx = Ctx.use();
   const publicInputs = ctx.publicInputs.use();
   const pk = ctx.pk.use();
+
+  const [choices, setChoices] = useState<('Yes' | 'No' | undefined)[]>(
+    publicInputs.map(() => undefined),
+  );
 
   if (pk === undefined) {
     return <div>Error: Public key is undefined</div>;
@@ -15,6 +20,8 @@ export default function ChooseItems() {
   const partyIndex = publicInputs.findIndex(
     p => bufferCmp(p.pk.publicKey, pk.publicKey) === 0,
   );
+
+  const ready = choices.every((c, i) => c !== undefined || i === partyIndex);
 
   if (partyIndex === -1) {
     console.log(pk, publicInputs);
@@ -40,7 +47,9 @@ export default function ChooseItems() {
               <div>{name}'s {item}</div>
               <YesNoPill
                 onChange={value => {
-                  // TODO
+                  const newChoices = [...choices];
+                  newChoices[i] = value;
+                  setChoices(newChoices);
                 }}
               />
             </div>
@@ -48,7 +57,9 @@ export default function ChooseItems() {
         })}
       </div>
       <div className='grow' />
-      <button>Submit</button>
+      <button disabled={!ready}>
+        {ready ? 'Submit' : 'Select yes or no for each item'}
+      </button>
     </div>
   );
 }
