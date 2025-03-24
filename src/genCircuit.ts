@@ -43,7 +43,7 @@ function asBits(nParties: number, partyIndex: number, prefs: number): boolean[] 
 
   for (let i = 0; i < nParties; i++) {
     if (i === partyIndex) {
-      // Enforce that sticking with your current item is preferred
+      // Enforce that sticking with your current item is acceptable
       prefBits.push(true);
     } else {
       prefBits.push((prefs & (1 << i)) !== 0);
@@ -53,7 +53,7 @@ function asBits(nParties: number, partyIndex: number, prefs: number): boolean[] 
   return prefBits;
 }
 
-function makePermutations(n: number, seed: number): number[][] {
+export function makePermutations(n: number, seed: number): number[][] {
   function sortPermutations(permutations: number[][], seed: number): number[][] {
     return permutations.sort((permA, permB) => {
       const swapsA = numberOfSwaps(permA);

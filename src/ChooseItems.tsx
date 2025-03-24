@@ -57,7 +57,19 @@ export default function ChooseItems() {
         })}
       </div>
       <div className='grow' />
-      <button disabled={!ready}>
+      <button
+        disabled={!ready}
+        onClick={() => {
+          if (!ready) {
+            return;
+          }
+
+          ctx.runProtocol(
+            partyIndex,
+            choices.map(c => c === 'Yes' || c === undefined),
+          );
+        }}
+      >
         {ready ? 'Submit' : 'Select yes or no for each item'}
       </button>
     </div>

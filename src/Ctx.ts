@@ -6,6 +6,9 @@ import Room, { IRoom } from './Room';
 import EcdhKeyPair, { PublicKey } from './EcdhKeyPair';
 import PartyTracker, { toPartyId } from './PartyTracker';
 import bufferCmp from './bufferCmp';
+import { EventEmitter } from 'ee-typed';
+import runProtocol from './runProtocol';
+import AsyncQueue from './AsyncQueue';
 
 type PageKind =
   | 'Home'
@@ -44,18 +47,32 @@ const PublicInputRow = z.object({
 });
 
 // eslint-disable-next-line no-redeclare
-type PublicInputRow = z.infer<typeof PublicInputRow>;
+export type PublicInputRow = z.infer<typeof PublicInputRow>;
 
 const PublicInputs = z.object({
   type: z.literal('publicInputs'),
   publicInputs: z.array(PublicInputRow),
 });
 
+const ReadyMsg = z.object({
+  type: z.literal('ready'),
+});
+
+const ProtocolMsg = z.object({
+  type: z.literal('protocol'),
+  data: z.instanceof(Uint8Array),
+});
+
+const RandMsg = z.object({
+  type: z.literal('rand'),
+  msg: z.unknown(),
+});
+
 const dummyPk: PublicKey = {
   publicKey: new Uint8Array(32),
 };
 
-export default class Ctx {
+export default class Ctx extends EventEmitter<{ everyoneReady(): void }> {
   page = new UsableField<PageKind>('ChooseItems');
   mode = new UsableField<'Host' | 'Join'>('Host');
   roomCode = new UsableField(Key.random().base58());
@@ -66,6 +83,11 @@ export default class Ctx {
   item = new UsableField('');
   parties = new UsableField<Party[]>([{ name: '', item: '', ready: false }]);
   pk = new UsableField<PublicKey | undefined>(undefined);
+  readyFlags = new UsableField<boolean[] | undefined>(undefined);
+  protocolMsgQueue = new AsyncQueue<{ from: PublicKey, data: Uint8Array }>();
+  randMsgQueue = new AsyncQueue<{ from: PublicKey, msg: unknown }>();
+  progress = new UsableField<number>(0);
+  result = new UsableField<number[]>([]);
 
   publicInputs = new UsableField<PublicInputRow[]>([
     { pk: dummyPk, name: 'Alice', item: 'Orange' },
@@ -77,6 +99,8 @@ export default class Ctx {
   room?: IRoom;
 
   constructor() {
+    super();
+
     (async () => {
       const id = await EcdhKeyPair.get('jumboswap');
       const pk = await id.encodePublicKey();
@@ -95,6 +119,7 @@ export default class Ctx {
     const pk = await id.encodePublicKey();
     const room = await Room.host(this.roomCode.value, id);
     this.room = room;
+    this.setupMsgQueues();
 
     const partyTracker = new PartyTracker(pk, this.room);
     partyTracker.setMembers([pk]);
@@ -134,6 +159,7 @@ export default class Ctx {
     const pk = await id.encodePublicKey();
     const room = await Room.join(roomCode, id);
     this.room = room;
+    this.setupMsgQueues();
 
     const partyTracker = new PartyTracker(pk, this.room);
     partyTracker.on('partiesUpdated', parties => this.parties.set(parties));
@@ -162,10 +188,52 @@ export default class Ctx {
     });
   }
 
+  setupMsgQueues() {
+    this.room!.on('message', (from, data) => {
+      const protoParsed = ProtocolMsg.safeParse(data);
+
+      if (protoParsed.success) {
+        this.protocolMsgQueue.push({ from, data: protoParsed.data.data });
+        return;
+      }
+
+      const randParsed = RandMsg.safeParse(data);
+
+      if (randParsed.success) {
+        this.randMsgQueue.push({ from, msg: randParsed.data.msg });
+        // return;
+      }
+    });
+  }
+
   async chooseItems(publicInputs: PublicInputRow[]) {
+    this.readyFlags.set(new Array(publicInputs.length).fill(false));
     this.partyTracker!.stop();
     this.publicInputs.set(publicInputs);
     this.page.set('ChooseItems');
+
+    this.room!.on('message', (from, data) => {
+      if (!ReadyMsg.safeParse(data).success) {
+        return;
+      }
+
+      const partyIndex = publicInputs.findIndex(
+        p => bufferCmp(p.pk.publicKey, from.publicKey) === 0,
+      );
+
+      if (partyIndex === -1) {
+        alert('Received ready message from unknown party');
+        return;
+      }
+
+      const readyFlags = this.readyFlags.value!;
+      readyFlags[partyIndex] = true;
+      this.readyFlags.set(readyFlags);
+
+      if (readyFlags.every(Boolean)) {
+        this.emit('everyoneReady');
+      }
+    });
   }
 
   handleProtocolError = (error: unknown) => {
@@ -173,6 +241,36 @@ export default class Ctx {
     this.errorMsg.set(`Protocol error: ${JSON.stringify(error)}`);
     this.page.set('Error');
   };
+
+  async runProtocol(partyIndex: number, prefs: boolean[]) {
+    this.room!.broadcast({ type: 'ready' });
+    const readyFlags = this.readyFlags.value!;
+    readyFlags![partyIndex] = true;
+    this.readyFlags.set(readyFlags);
+
+    if (!this.readyFlags.value!.every(Boolean)) {
+      this.page.set('Waiting');
+
+      await new Promise<void>(resolve => {
+        this.once('everyoneReady', resolve);
+      });
+    }
+
+    this.page.set('Calculating');
+
+    const result = await runProtocol(
+      partyIndex,
+      prefs,
+      this.publicInputs.value,
+      this.room!,
+      this.protocolMsgQueue,
+      this.randMsgQueue,
+      progress => this.progress.set(progress),
+    );
+
+    this.result.set(result);
+    this.page.set('Result');
+  }
 
   private static context = createContext<Ctx>(
     {} as Ctx,

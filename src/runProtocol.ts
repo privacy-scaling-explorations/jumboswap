@@ -2,50 +2,37 @@ import z from 'zod';
 import * as mpcf from 'mpc-framework';
 import { EmpWasmBackend } from 'emp-wasm-backend';
 import * as summon from 'summon-ts';
-import { RtcPairSocket } from 'rtc-pair-socket';
 import assert from './assert';
+import { PublicInputRow } from './Ctx';
+import genCircuit, { makePermutations } from './genCircuit';
+import { IRoom } from './Room';
 import AsyncQueue from './AsyncQueue';
-import { GameOption } from './Ctx';
-import genCircuit from './genCircuit';
+import { PublicKey } from './EcdhKeyPair';
+import bufferCmp from './bufferCmp';
 
+// eslint-disable-next-line max-params
 export default async function runProtocol(
-  mode: 'Host' | 'Join',
-  socket: RtcPairSocket,
-  choice: GameOption,
-  onProgress?: (progress: number) => void,
-): Promise<'win' | 'lose' | 'draw'> {
-  const msgQueue = new AsyncQueue<unknown>();
-
-  const TOTAL_BYTES = 285618;
-  let currentBytes = 0;
-
-  socket.on('message', (msg: Uint8Array) => {
-    msgQueue.push(msg);
-
-    currentBytes += msg.byteLength;
-
-    if (onProgress) {
-      onProgress(currentBytes / TOTAL_BYTES);
-    }
-  });
+  partyIndex: number,
+  prefs: boolean[],
+  publicInputs: PublicInputRow[],
+  room: IRoom,
+  protocolMsgQueue: AsyncQueue<{ from: PublicKey, data: Uint8Array }>,
+  _randMsgQueue: AsyncQueue<{ from: PublicKey, msg: unknown }>,
+  onProgress: (progress: number) => void = () => {},
+): Promise<number[]> {
+  let bytesTransferred = 0;
+  const rand = 1.1; // TODO: Use randMsgQueue to get a fair random number
 
   await summon.init();
 
-  const circuitFiles = genCircuit(4, 1.1);
-  const circuit = summon.compileBoolean('circuit/main.ts', 3, circuitFiles);
+  const circuitFiles = genCircuit(publicInputs.length, rand);
+  const circuit = summon.compileBoolean('circuit/main.ts', 8, circuitFiles);
 
-  const mpcSettings = [
-    {
-      name: 'alice',
-      inputs: ['player1'],
-      outputs: ['main'],
-    },
-    {
-      name: 'bob',
-      inputs: ['player2'],
-      outputs: ['main'],
-    },
-  ];
+  const mpcSettings = publicInputs.map((_, i) => ({
+    name: `party${i}`,
+    inputs: [`party${i}Prefs`],
+    outputs: ['main'],
+  }));
 
   const protocol = new mpcf.Protocol(
     circuit,
@@ -53,41 +40,36 @@ export default async function runProtocol(
     new EmpWasmBackend(),
   );
 
-  const party = mode === 'Host' ? 'alice' : 'bob';
-  const otherParty = mode === 'Host' ? 'bob' : 'alice';
-
-  const optionMap: Record<GameOption, number> = {
-    rock: 1,
-    paper: 2,
-    scissors: 3,
-    lizard: 4,
-    spock: 5,
-  };
-
-  const input = optionMap[choice];
-
   const session = protocol.join(
-    party,
-    party === 'alice' ? { player1: input } : { player2: input },
+    `party${partyIndex}`,
+    {
+      [`party${partyIndex}Prefs`]: encodePrefs(prefs),
+    },
     (to, msg) => {
-      assert(to === otherParty);
-      socket.send(msg);
+      assert(/^party\d$/.test(to), 'Invalid recipient');
+      const i = parseInt(to.slice(5), 10);
 
-      currentBytes += msg.byteLength;
+      room.send(publicInputs[i].pk, {
+        type: 'protocol',
+        data: msg,
+      });
 
-      if (onProgress) {
-        onProgress(currentBytes / TOTAL_BYTES);
-      }
+      bytesTransferred += msg.length;
+      onProgress(bytesTransferred);
     },
   );
 
-  msgQueue.stream(msg => {
-    if (!(msg instanceof Uint8Array)) {
-      console.error(new Error('Expected Uint8Array'));
-      return;
+  protocolMsgQueue.stream(({ from, data }) => {
+    for (let i = 0; i < publicInputs.length; i++) {
+      if (bufferCmp(publicInputs[i].pk.publicKey, from.publicKey) === 0) {
+        session.handleMessage(`party${i}`, data);
+        bytesTransferred += data.length;
+        onProgress(bytesTransferred);
+        return;
+      }
     }
 
-    session.handleMessage(otherParty, msg);
+    console.error('Unexpected from:', from);
   });
 
   const Output = z.object({
@@ -96,17 +78,11 @@ export default async function runProtocol(
 
   const output = Output.parse(await session.output());
 
-  const outputMap: Record<number, 'win' | 'lose' | 'draw' | undefined> = {
-    0: 'draw',
-    1: party === 'alice' ? 'win' : 'lose',
-    2: party === 'alice' ? 'lose' : 'win',
-  };
+  const perms = makePermutations(publicInputs.length, rand);
 
-  const result = outputMap[output.main];
+  return perms[output.main];
+}
 
-  if (result === undefined) {
-    throw new Error('Invalid output');
-  }
-
-  return result;
+function encodePrefs(prefs: boolean[]) {
+  return prefs.reduce((acc, pref, i) => acc | (pref ? 1 << i : 0), 0);
 }
