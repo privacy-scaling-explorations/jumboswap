@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import Emitter from './Emitter';
+import { EventEmitter } from 'ee-typed';
 
-export default class UsableField<T> extends Emitter<{ update(): void }> {
+export default class UsableField<T> extends EventEmitter<{ update(): void }> {
   constructor(public value: T) {
     super();
   }
