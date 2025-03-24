@@ -65,6 +65,8 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
   choice = new UsableField<GameOption | undefined>(undefined);
   mpcProgress = new UsableField<number>(0);
   partyTracker?: PartyTracker;
+  name = new UsableField('');
+  item = new UsableField('');
   parties = new UsableField<Party[]>([{ name: '', item: '', ready: false }]);
   room?: IRoom;
 

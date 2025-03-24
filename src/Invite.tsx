@@ -30,8 +30,16 @@ export default function Invite() {
           <button style={{ padding: '0.5rem' }}>copy</button>
         </CopyToClipboard> it and send.
       </p>
-      <p>Once your friends have joined, proceed to the lobby.</p>
-      <div className='grow' />
+      <div className='grow'></div>
+      <p>
+        Once your friends have joined, proceed to the&nbsp;
+        <a
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            ctx.page.set('Lobby');
+          }}
+        >lobby</a>.
+      </p>
     </div>
   );
 }

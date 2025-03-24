@@ -4,8 +4,9 @@ import TitlePill from './TitlePill';
 
 export default function Lobby() {
   const ctx = Ctx.use();
-  const mode = ctx.mode.use();
   const parties = ctx.parties.use();
+  const name = ctx.name.use();
+  const item = ctx.item.use();
 
   const { partyTracker } = ctx;
 
@@ -36,29 +37,68 @@ export default function Lobby() {
       <div>
         <form className='form-grid'>
           <label htmlFor='name'>Your name:</label>
-          <input type='text' id='name' name='name' disabled={ready} onInput={evt => {
-            const input = evt.target as HTMLInputElement;
-            partyTracker.updateSelf({ name: input.value });
-          }} />
+          <input
+            type='text'
+            id='name'
+            name='name'
+            disabled={ready}
+            value={name}
+            onInput={evt => {
+              const input = evt.target as HTMLInputElement;
+              partyTracker.updateSelf({ name: input.value });
+              ctx.name.set(input.value);
+            }}
+          />
 
           <label htmlFor='item'>Swapping item:</label>
-          <input type='text' id='item' name='item' disabled={ready} onInput={evt => {
-            const input = evt.target as HTMLInputElement;
-            partyTracker.updateSelf({ item: input.value });
-          }} />
+          <input
+            type='text'
+            id='item'
+            name='item'
+            disabled={ready}
+            value={item}
+            onInput={evt => {
+              const input = evt.target as HTMLInputElement;
+              partyTracker.updateSelf({ item: input.value });
+              ctx.item.set(input.value);
+            }}
+          />
         </form>
       </div>
       <div>
-        {ready
-          ? 'Waiting for everyone to be ready...'
-          : 'Enter your details and press "I\'m Ready"'
-        }
+        {(() => {
+          if (!ready) {
+            if (name.trim() === '' || item.trim() === '') {
+              return 'Enter your details';
+            }
+
+            return 'Enter your details and press "I\'m Ready"';
+          }
+
+          if (parties.length === 1) {
+            return (<>
+              <a
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  ctx.page.set('Invite');
+                }}
+              >Invite</a> at least one party
+            </>);
+          }
+
+          return 'Waiting for everyone to be ready...';
+        })()}
       </div>
       <div>
         <button
           className={ready ? 'secondary' : ''}
           style={{ width: '100%', lineHeight: '1.1em' }}
           onClick={() => {
+            if (name.trim() === '' || item.trim() === '') {
+              alert('Please enter your name and item');
+              return;
+            }
+
             partyTracker.updateSelf({ ready: !ready });
           }}
         >{ready ? 'Change Details' : 'I\'m Ready'}</button>

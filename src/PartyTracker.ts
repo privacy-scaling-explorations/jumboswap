@@ -227,7 +227,10 @@ export default class PartyTracker extends EventEmitter<Events> {
     const parties = this.memberIds.map(mId => this.partiesById[mId]);
     this.emit('partiesUpdated', parties);
 
-    if (this.memberIds.every(mId => this.partiesById[mId].ready)) {
+    if (
+      this.memberIds.length >= 2
+      && this.memberIds.every(mId => this.partiesById[mId].ready)
+    ) {
       this.emit('allReady');
     }
   }
