@@ -162,14 +162,14 @@ export default class PartyTracker extends EventEmitter<Events> {
       let gotReply = false;
 
       (async () => {
-        while (!socket.isClosed()) {
+        while (true) {
           socket.send({ type: 'ping', pingId });
 
           await new Promise(resolve => {
             setTimeout(resolve, 1000);
           });
 
-          if (gotReply) {
+          if (gotReply || socket.isClosed()) {
             break;
           }
 
