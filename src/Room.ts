@@ -379,7 +379,7 @@ class SocketSet {
       // This is a bug in RtcPairSocket.
       // FIXME
       await new Promise<void>(resolve => {
-        setTimeout(resolve, 500);
+        setTimeout(resolve, 3000);
       });
     }
 

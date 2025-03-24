@@ -17,7 +17,7 @@
     "bs58": "^5.0.0",
     "buffer": "^6.0.3",
     "ee-typed": "^0.1.1",
-    "emp-wasm-backend": "^0.1.0",
+    "emp-wasm-backend": "^0.3.1",
     "events": "^3.3.0",
     "keccak256": "^1.0.6",
     "mpc-framework": "^0.1.1",
