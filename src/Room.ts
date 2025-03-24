@@ -114,6 +114,11 @@ export class HostedRoom extends EventEmitter<RoomEvents> implements IRoom {
             return;
           }
 
+          if (bufferCmp(parsed.data.publicKey, this.pk.publicKey) === 0) {
+            alert('Refusing to add self as member');
+            conn.close();
+          }
+
           this.addMember(connEntry, parsed.data);
         });
 
