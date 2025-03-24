@@ -1,5 +1,6 @@
 import './Lobby.css';
 import Ctx from './Ctx';
+import TitlePill from './TitlePill';
 
 export default function Lobby() {
   const ctx = Ctx.use();
@@ -16,7 +17,7 @@ export default function Lobby() {
 
   return (
     <div className='lobby-page' style={{ WebkitTapHighlightColor: 'transparent' }}>
-      <div className='title'>Lobby</div>
+      <TitlePill />
       <div className='parties'>
         <div className='th-cell'>Name</div>
         <div className='th-cell'>Item</div>
@@ -31,6 +32,7 @@ export default function Lobby() {
           </>
         ))}
       </div>
+      <div className='grow' />
       <div>
         <form className='form-grid'>
           <label htmlFor='name'>Your name:</label>
@@ -47,11 +49,10 @@ export default function Lobby() {
         </form>
       </div>
       <div>
-        <button
-          className='secondary'
-          style={{ width: '100%', lineHeight: '1.1em' }}
-          onClick={() => ctx.page.set('Invite')}
-        >Invite</button>
+        {ready
+          ? 'Waiting for everyone to be ready...'
+          : 'Enter your details and press "I\'m Ready"'
+        }
       </div>
       <div>
         <button
@@ -62,16 +63,6 @@ export default function Lobby() {
           }}
         >{ready ? 'Change Details' : 'I\'m Ready'}</button>
       </div>
-      {mode === 'Host' && <>
-        <div style={{ visibility: ready ? 'visible' : 'hidden', marginBottom: '3em' }}>
-          <button style={{ width: '100%', lineHeight: '1.1em' }}>Start</button>
-        </div>
-      </>}
-      {mode === 'Join' && <>
-        <div style={{ visibility: ready ? 'visible' : 'hidden', marginBottom: '3em' }}>
-          Waiting for host...
-        </div>
-      </>}
     </div>
   );
 }

@@ -2,7 +2,8 @@
   display: flex;
   flex-direction: column;
   place-content: center;
-  gap: calc(0.1 * var(--aw));
+  gap: 2rem;
+  flex-grow: 1;
 }
 
 .form-grid {

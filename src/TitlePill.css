@@ -1,0 +1,33 @@
+.title.pill .pill-container {
+  display: flex;
+  flex-direction: row;
+}
+
+.title.pill .pill-container > div {
+  padding: 0 1rem;
+  color: #000000a0;
+  flex-grow: 1;
+  flex-basis: 0;
+  border: 1px solid #00000044;
+  cursor: pointer;
+}
+
+.title.pill .pill-container > div:not(:last-child) {
+  padding: 0 1rem;
+  border-right: none;
+}
+
+.title.pill .pill-container > div:first-child {
+  border-top-left-radius: 1rem;
+  border-bottom-left-radius: 1rem;
+}
+
+.title.pill .pill-container > div:last-child {
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+.title.pill .pill-container > div.selected {
+  background-color: hsl(216, 76%, 50%);
+  color: white;
+}

@@ -52,11 +52,7 @@ function App() {
     never(page);
   }
 
-  return <>
-    <div style={{ flexGrow: 1 }} />
-    {content}
-    <div style={{ flexGrow: 1 }}></div>
-  </>;
+  return content;
 }
 
 export default App;
