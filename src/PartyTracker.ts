@@ -81,13 +81,7 @@ export default class PartyTracker extends EventEmitter<Events> {
 
     for (const [i, memberId] of this.memberIds.entries()) {
       if (!(memberId in this.partiesById)) {
-        this.partiesById[memberId] = {
-          name: '',
-          item: '',
-          ready: false,
-          ping: undefined,
-        };
-
+        this.partiesById[memberId] = defaultParty();
         this.pingLoop(memberId, members[i]);
       }
     }
@@ -246,6 +240,6 @@ export default class PartyTracker extends EventEmitter<Events> {
   }
 }
 
-function toPartyId(pk: PublicKey) {
+export function toPartyId(pk: PublicKey) {
   return Key.fromSeed(pk).base58();
 }

@@ -1,0 +1,15 @@
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.choice-list > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem;
+}
+
+.choice-list > div:not(:first-child) {
+  border-top: 1px solid #00000044;
+}

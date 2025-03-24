@@ -3,8 +3,8 @@ import { createContext, useContext } from 'react';
 import UsableField from './UsableField';
 import { Key } from 'rtc-pair-socket';
 import Room, { IRoom } from './Room';
-import EcdhKeyPair from './EcdhKeyPair';
-import PartyTracker from './PartyTracker';
+import EcdhKeyPair, { PublicKey } from './EcdhKeyPair';
+import PartyTracker, { toPartyId } from './PartyTracker';
 import bufferCmp from './bufferCmp';
 
 type PageKind =
@@ -37,18 +37,26 @@ export type Party = {
   ping?: number;
 };
 
-const FinalizeNamesAndItems = z.object({
-  type: z.literal('finalizeNamesAndItems'),
-  namesAndItems: z.array(
-    z.object({
-      name: z.string(),
-      item: z.string(),
-    }),
-  ),
+const PublicInputRow = z.object({
+  pk: PublicKey,
+  name: z.string(),
+  item: z.string(),
 });
 
+// eslint-disable-next-line no-redeclare
+type PublicInputRow = z.infer<typeof PublicInputRow>;
+
+const PublicInputs = z.object({
+  type: z.literal('publicInputs'),
+  publicInputs: z.array(PublicInputRow),
+});
+
+const dummyPk: PublicKey = {
+  publicKey: new Uint8Array(32),
+};
+
 export default class Ctx {
-  page = new UsableField<PageKind>('Home');
+  page = new UsableField<PageKind>('ChooseItems');
   mode = new UsableField<'Host' | 'Join'>('Host');
   roomCode = new UsableField(Key.random().base58());
   errorMsg = new UsableField<string>('');
@@ -57,7 +65,28 @@ export default class Ctx {
   name = new UsableField('');
   item = new UsableField('');
   parties = new UsableField<Party[]>([{ name: '', item: '', ready: false }]);
+  pk = new UsableField<PublicKey | undefined>(undefined);
+
+  publicInputs = new UsableField<PublicInputRow[]>([
+    { pk: dummyPk, name: 'Alice', item: 'Orange' },
+    { pk: dummyPk, name: 'Bob', item: 'Apple' },
+    { pk: dummyPk, name: 'Charlie', item: 'Peach' },
+    { pk: dummyPk, name: 'David', item: 'Mango' },
+  ]);
+
   room?: IRoom;
+
+  constructor() {
+    (async () => {
+      const id = await EcdhKeyPair.get('jumboswap');
+      const pk = await id.encodePublicKey();
+      this.pk.set(pk);
+
+      const publicInputs = structuredClone(this.publicInputs.value);
+      publicInputs[1].pk = pk;
+      this.publicInputs.set(publicInputs);
+    })();
+  }
 
   async host() {
     this.mode.set('Host');
@@ -72,15 +101,28 @@ export default class Ctx {
     partyTracker.on('partiesUpdated', parties => this.parties.set(parties));
     this.partyTracker = partyTracker;
 
-    partyTracker.on('allReady', () => {
+    partyTracker.once('allReady', () => {
+      const members = room.getMembers();
+
+      const publicInputs = members.map(
+        pk => {
+          const partyId = toPartyId(pk);
+          const party = partyTracker.partiesById[partyId];
+
+          return {
+            pk,
+            name: party.name,
+            item: party.item,
+          };
+        },
+      );
+
       room.broadcast({
-        type: 'finalizeNamesAndItems',
-        namesAndItems: this.parties.value.map(
-          p => ({ name: p.name, item: p.item }),
-        ),
+        type: 'publicInputs',
+        publicInputs,
       });
 
-      this.chooseItems();
+      this.chooseItems(publicInputs);
     });
   }
 
@@ -106,7 +148,7 @@ export default class Ctx {
     this.page.set('Lobby');
 
     room.on('message', (from, data) => {
-      const parsed = FinalizeNamesAndItems.safeParse(data);
+      const parsed = PublicInputs.safeParse(data);
 
       if (bufferCmp(from.publicKey, room.getMembers()[0].publicKey) !== 0) {
         return;
@@ -116,16 +158,13 @@ export default class Ctx {
         return;
       }
 
-      this.parties.set(parsed.data.namesAndItems.map(
-        ({ name, item }) => ({ name, item, ready: true }),
-      ));
-
-      this.chooseItems();
+      this.chooseItems(parsed.data.publicInputs);
     });
   }
 
-  async chooseItems() {
+  async chooseItems(publicInputs: PublicInputRow[]) {
     this.partyTracker!.stop();
+    this.publicInputs.set(publicInputs);
     this.page.set('ChooseItems');
   }
 
