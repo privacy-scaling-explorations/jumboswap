@@ -11,6 +11,7 @@ import Share from './Share';
 import Waiting from './Waiting';
 import isKey from './isKey';
 import never from './never';
+import ChooseItems from './ChooseItems';
 
 function App() {
   const ctx = Ctx.use();
@@ -42,6 +43,8 @@ function App() {
     content = <Lobby />;
   } else if (page === 'Waiting') {
     content = <Waiting />;
+  } else if (page === 'ChooseItems') {
+    content = <ChooseItems />;
   } else if (page === 'Calculating') {
     content = <Calculating />;
   } else if (page === 'Result') {

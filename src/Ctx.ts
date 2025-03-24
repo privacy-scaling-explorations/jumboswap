@@ -10,6 +10,7 @@ import { Key, RtcPairSocket } from 'rtc-pair-socket';
 import Room, { IRoom } from './Room';
 import EcdhKeyPair from './EcdhKeyPair';
 import PartyTracker from './PartyTracker';
+import bufferCmp from './bufferCmp';
 
 type PageKind =
   | 'Home'
@@ -19,6 +20,7 @@ type PageKind =
   | 'Connecting'
   | 'Lobby'
   | 'Waiting'
+  | 'ChooseItems'
   | 'Calculating'
   | 'Result'
   | 'Error';
@@ -41,6 +43,16 @@ export type Party = {
   ready: boolean;
   ping?: number;
 };
+
+const FinalizeNamesAndItems = z.object({
+  type: z.literal('finalizeNamesAndItems'),
+  namesAndItems: z.array(
+    z.object({
+      name: z.string(),
+      item: z.string(),
+    }),
+  ),
+});
 
 export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
   page = new UsableField<PageKind>('Home');
@@ -65,12 +77,24 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
 
     const id = await EcdhKeyPair.get('jumboswap');
     const pk = await id.encodePublicKey();
-    this.room = await Room.host(this.roomCode.value, id);
+    const room = await Room.host(this.roomCode.value, id);
+    this.room = room;
 
     const partyTracker = new PartyTracker(pk, this.room);
     partyTracker.setMembers([pk]);
     partyTracker.on('partiesUpdated', parties => this.parties.set(parties));
     this.partyTracker = partyTracker;
+
+    partyTracker.on('allReady', () => {
+      room.broadcast({
+        type: 'finalizeNamesAndItems',
+        namesAndItems: this.parties.value.map(
+          p => ({ name: p.name, item: p.item }),
+        ),
+      });
+
+      this.chooseItems();
+    });
   }
 
   async join(roomCode: string) {
@@ -93,6 +117,29 @@ export default class Ctx extends Emitter<{ ready(choice: GameOption): void }> {
     });
 
     this.page.set('Lobby');
+
+    room.on('message', (from, data) => {
+      const parsed = FinalizeNamesAndItems.safeParse(data);
+
+      if (bufferCmp(from.publicKey, room.getMembers()[0].publicKey) !== 0) {
+        return;
+      }
+
+      if (!parsed.success) {
+        return;
+      }
+
+      this.parties.set(parsed.data.namesAndItems.map(
+        ({ name, item }) => ({ name, item, ready: true }),
+      ));
+
+      this.chooseItems();
+    });
+  }
+
+  async chooseItems() {
+    this.partyTracker!.stop();
+    this.page.set('ChooseItems');
   }
 
   async runProtocol(socket: RtcPairSocket) {

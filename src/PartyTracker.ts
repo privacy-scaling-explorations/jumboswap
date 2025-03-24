@@ -8,6 +8,7 @@ import bufferCmp from './bufferCmp';
 
 type Events = {
   partiesUpdated(parties: Party[]): void;
+  allReady(): void;
 };
 
 const Ping = z.object({
@@ -41,6 +42,7 @@ function defaultParty(): Party {
 export default class PartyTracker extends EventEmitter<Events> {
   partiesById: Record<string, Party> = {};
   memberIds: string[] = [];
+  stopped = false;
 
   constructor(
     public pk: PublicKey,
@@ -48,29 +50,31 @@ export default class PartyTracker extends EventEmitter<Events> {
   ) {
     super();
 
-    room.on('membersChanged', members => {
-      console.log('membersChanged', members);
-      this.setMembers(members);
-    });
-
-    room.on('message', (from, data) => {
-      const parsed = PartyUpdate.safeParse(data);
-
-      if (!parsed.success) {
-        return;
-      }
-
-      const memberId = toPartyId(from);
-
-      const party = {
-        ...(this.partiesById[memberId] ?? defaultParty()),
-        ...parsed.data.partyUpdate,
-      };
-
-      this.partiesById[memberId] = party;
-      this.emitPartiesUpdated();
-    });
+    room.on('membersChanged', this.onMembersChanged);
+    room.on('message', this.onRoomMessage);
   }
+
+  onMembersChanged = (members: PublicKey[]) => {
+    this.setMembers(members);
+  };
+
+  onRoomMessage = (from: PublicKey, data: unknown) => {
+    const parsed = PartyUpdate.safeParse(data);
+
+    if (!parsed.success) {
+      return;
+    }
+
+    const memberId = toPartyId(from);
+
+    const party = {
+      ...(this.partiesById[memberId] ?? defaultParty()),
+      ...parsed.data.partyUpdate,
+    };
+
+    this.partiesById[memberId] = party;
+    this.emitPartiesUpdated();
+  };
 
   setMembers(members: PublicKey[]) {
     this.memberIds = members.map(toPartyId);
@@ -222,6 +226,20 @@ export default class PartyTracker extends EventEmitter<Events> {
   emitPartiesUpdated() {
     const parties = this.memberIds.map(mId => this.partiesById[mId]);
     this.emit('partiesUpdated', parties);
+
+    if (this.memberIds.every(mId => this.partiesById[mId].ready)) {
+      this.emit('allReady');
+    }
+  }
+
+  stop() {
+    this.stopped = true;
+
+    this.room.off('membersChanged', this.onMembersChanged);
+    this.room.off('message', this.onRoomMessage);
+
+    // We still keep pinging though
+    // (Maybe ping should be separate)
   }
 }
 
