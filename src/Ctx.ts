@@ -68,12 +68,8 @@ const RandMsg = z.object({
   msg: z.unknown(),
 });
 
-const dummyPk: PublicKey = {
-  publicKey: new Uint8Array(32),
-};
-
 export default class Ctx extends EventEmitter<{ everyoneReady(): void }> {
-  page = new UsableField<PageKind>('ChooseItems');
+  page = new UsableField<PageKind>('Home');
   mode = new UsableField<'Host' | 'Join'>('Host');
   roomCode = new UsableField(Key.random().base58());
   errorMsg = new UsableField<string>('');
@@ -86,15 +82,9 @@ export default class Ctx extends EventEmitter<{ everyoneReady(): void }> {
   readyFlags = new UsableField<boolean[] | undefined>(undefined);
   protocolMsgQueue = new AsyncQueue<{ from: PublicKey, data: Uint8Array }>();
   randMsgQueue = new AsyncQueue<{ from: PublicKey, msg: unknown }>();
-  progress = new UsableField<number>(0);
   result = new UsableField<number[]>([]);
 
-  publicInputs = new UsableField<PublicInputRow[]>([
-    { pk: dummyPk, name: 'Alice', item: 'Orange' },
-    { pk: dummyPk, name: 'Bob', item: 'Apple' },
-    { pk: dummyPk, name: 'Charlie', item: 'Peach' },
-    { pk: dummyPk, name: 'David', item: 'Mango' },
-  ]);
+  publicInputs = new UsableField<PublicInputRow[]>([]);
 
   room?: IRoom;
 
@@ -265,7 +255,7 @@ export default class Ctx extends EventEmitter<{ everyoneReady(): void }> {
       this.room!,
       this.protocolMsgQueue,
       this.randMsgQueue,
-      progress => this.progress.set(progress),
+      progress => this.mpcProgress.set(progress),
     );
 
     this.result.set(result);

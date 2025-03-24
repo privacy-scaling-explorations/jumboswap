@@ -1,0 +1,13 @@
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  flex-grow: 1;
+}
+
+.result .content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  align-self: center;
+}
