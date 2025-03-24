@@ -374,6 +374,15 @@ class SocketSet {
 
     const side = pkCmp === -1 ? 'alice' : 'bob';
 
+    if (side === 'bob') {
+      // It's important to let alice connect first.
+      // This is a bug in RtcPairSocket.
+      // FIXME
+      await new Promise<void>(resolve => {
+        setTimeout(resolve, 500);
+      });
+    }
+
     const socket = new RtcPairSocket(
       `socket-set-${ctxSharedKey.base58()}`,
       side,
