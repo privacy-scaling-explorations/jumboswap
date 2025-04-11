@@ -54,7 +54,7 @@ export default async function runProtocol(
   await summon.init();
 
   const circuitFiles = genCircuit(publicInputs.length, rand);
-  const circuit = summon.compileBoolean('circuit/main.ts', 8, circuitFiles);
+  const { circuit } = summon.compileBoolean('circuit/main.ts', 8, circuitFiles);
 
   const mpcSettings = publicInputs.map((_, i) => ({
     name: `party${i}`,
