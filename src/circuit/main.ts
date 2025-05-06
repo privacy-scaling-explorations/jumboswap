@@ -13,7 +13,11 @@ export default (io: Summon.IO) => {
         // Enforce that sticking with your current item is acceptable
         prefs.push(true);
       } else {
-        prefs.push(io.inputPublic(`party${i}PrefersItem${j}`, summon.bool()));
+        prefs.push(io.input(
+          `party${i}`,
+          `party${i}PrefersItem${j}`,
+          summon.bool(),
+        ));
       }
     }
 

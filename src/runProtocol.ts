@@ -118,7 +118,7 @@ export default async function runProtocol(
   });
 
   const Output = z.object({
-    main: z.number(),
+    bestPermIndex: z.number(),
   });
 
   const output = Output.parse(await session.output());
@@ -133,5 +133,5 @@ export default async function runProtocol(
     );
   }
 
-  return perms[output.main];
+  return perms[output.bestPermIndex];
 }
