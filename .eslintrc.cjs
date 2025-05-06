@@ -1,4 +1,3 @@
-
 module.exports = {
   root: true,
   env: { browser: true, es2020: true },
@@ -10,7 +9,7 @@ module.exports = {
   ],
   ignorePatterns: ['dist'],
   parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh'],
+  plugins: ['react-refresh', 'no-autofix'],
   rules: {
     'react-refresh/only-export-components': [
       'warn',
@@ -37,5 +36,7 @@ module.exports = {
     'no-await-in-loop': 'off',
     'generator-star-spacing': 'off',
     'no-return-await': 'off',
+    'prefer-const': 'off',
+    'no-autofix/prefer-const': 'warn',
   },
 };
