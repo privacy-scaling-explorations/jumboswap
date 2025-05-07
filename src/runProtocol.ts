@@ -14,11 +14,11 @@ import makePermutations from './circuit/makePermutations';
 const partySizeToHostTotalBytes = [
   0,
   0,
-  241085,
-  396906,
-  2852289,
-  18799596,
-  100000000,
+  240749,
+  156058,
+  596649,
+  4717452,
+  44155915,
   1000000000,
   10000000000,
 ];
@@ -26,11 +26,11 @@ const partySizeToHostTotalBytes = [
 const partySizeToJoinerTotalBytes = [
   0,
   0,
-  241085,
-  368145,
-  2383463,
-  13823445,
-  100000000,
+  240749,
+  152967,
+  526919,
+  3678969,
+  30110735,
   1000000000,
   10000000000,
 ];
@@ -56,7 +56,10 @@ export default async function runProtocol(
 
   const perms = makePermutations(publicInputs.length, rand);
 
-  let boolifyWidth = 1;
+  // We use 2 as a minimum because 1-bit numbers get turned into booleans.
+  // (FIXME: This is a bug in Summon.)
+  let boolifyWidth = 2;
+
   // Find the smallest power of 2 that is greater than or equal to perms.length.
   // This number of bits is required because we need to encode the index of the
   // permutation.
@@ -128,7 +131,7 @@ export default async function runProtocol(
       [
         'Bytes sent & received was not equal to totalBytes.',
         ' This causes incorrect progress calculations.',
-        ` To fix, update totalBytes to ${bytesTransferred}.`,
+        ` To fix, update totalBytes from ${totalBytes} to ${bytesTransferred}.`,
       ].join(''),
     );
   }
