@@ -1,23 +1,24 @@
 import z from 'zod';
 import * as mpcf from 'mpc-framework';
-import { EmpWasmBackend } from 'emp-wasm-backend';
+import { EmpWasmEngine } from 'emp-wasm-engine';
 import * as summon from 'summon-ts';
 import assert from './assert';
 import { PublicInputRow } from './Ctx';
-import genCircuit, { makePermutations } from './genCircuit';
 import { IRoom } from './Room';
 import AsyncQueue from './AsyncQueue';
 import { PublicKey } from './EcdhKeyPair';
 import bufferCmp from './bufferCmp';
+import getCircuitFiles from './getCircuitFiles';
+import makePermutations from './circuit/makePermutations';
 
 const partySizeToHostTotalBytes = [
   0,
   0,
-  241085,
-  396906,
-  2852289,
-  18799596,
-  100000000,
+  240749,
+  156058,
+  596649,
+  4717452,
+  44155915,
   1000000000,
   10000000000,
 ];
@@ -25,11 +26,11 @@ const partySizeToHostTotalBytes = [
 const partySizeToJoinerTotalBytes = [
   0,
   0,
-  241085,
-  368145,
-  2383463,
-  13823445,
-  100000000,
+  240749,
+  152967,
+  526919,
+  3678969,
+  30110735,
   1000000000,
   10000000000,
 ];
@@ -53,28 +54,47 @@ export default async function runProtocol(
 
   await summon.init();
 
-  const circuitFiles = genCircuit(publicInputs.length, rand);
-  const { circuit } = summon.compileBoolean('circuit/main.ts', 8, circuitFiles);
+  const perms = makePermutations(publicInputs.length, rand);
 
-  const mpcSettings = publicInputs.map((_, i) => ({
-    name: `party${i}`,
-    inputs: [`party${i}Prefs`],
-    outputs: ['main'],
-  }));
+  // We use 2 as a minimum because 1-bit numbers get turned into booleans.
+  // (FIXME: This is a bug in Summon.)
+  let boolifyWidth = 2;
 
-  const protocol = new mpcf.Protocol(
-    circuit,
-    mpcSettings,
-    new EmpWasmBackend(),
-  );
+  // Find the smallest power of 2 that is greater than or equal to perms.length.
+  // This number of bits is required because we need to encode the index of the
+  // permutation.
+  while (2 ** boolifyWidth < perms.length) {
+    boolifyWidth++;
+  }
+
+  const { circuit } = summon.compile({
+    path: 'circuit/main.ts',
+    boolifyWidth,
+    publicInputs: {
+      nParties: publicInputs.length,
+      seed: rand,
+    },
+    files: await getCircuitFiles(),
+  });
+
+  const inputs: Record<string, unknown> = {};
+
+  for (const [j, pref] of prefs.entries()) {
+    if (partyIndex === j) {
+      // The circuit hardcodes that keeping your item is acceptable.
+      continue;
+    }
+
+    inputs[`party${partyIndex}PrefersItem${j}`] = pref;
+  }
+
+  const protocol = new mpcf.Protocol(circuit, new EmpWasmEngine());
 
   const session = protocol.join(
     `party${partyIndex}`,
-    {
-      [`party${partyIndex}Prefs`]: encodePrefs(prefs),
-    },
+    inputs,
     (to, msg) => {
-      assert(/^party\d$/.test(to), 'Invalid recipient');
+      assert(/^party\d+$/.test(to), 'Invalid recipient');
       const i = parseInt(to.slice(5), 10);
 
       room.send(publicInputs[i].pk, {
@@ -101,16 +121,20 @@ export default async function runProtocol(
   });
 
   const Output = z.object({
-    main: z.number(),
+    bestPermIndex: z.number(),
   });
 
   const output = Output.parse(await session.output());
 
-  const perms = makePermutations(publicInputs.length, rand);
+  if (bytesTransferred !== totalBytes) {
+    console.error(
+      [
+        'Bytes sent & received was not equal to totalBytes.',
+        ' This causes incorrect progress calculations.',
+        ` To fix, update totalBytes from ${totalBytes} to ${bytesTransferred}.`,
+      ].join(''),
+    );
+  }
 
-  return perms[output.main];
-}
-
-function encodePrefs(prefs: boolean[]) {
-  return prefs.reduce((acc, pref, i) => acc | (pref ? 1 << i : 0), 0);
+  return perms[output.bestPermIndex];
 }
