@@ -3,10 +3,15 @@ import Ctx from './Ctx';
 import { QRCodeCanvas } from 'qrcode.react';
 import TitlePill from './TitlePill';
 
+const maxRecommendedPartySize = 5;
+
 export default function Invite() {
   const ctx = Ctx.use();
   const roomCode = ctx.roomCode.use();
   const parties = ctx.parties.use();
+  const partySizeWarningDismissed = ctx.partySizeWarningDismissed.use();
+
+  const warningNeeded = parties.length >= maxRecommendedPartySize && !partySizeWarningDismissed;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
@@ -18,14 +23,34 @@ export default function Invite() {
       <p>
         Get your friends to scan:
       </p>
-      <center>
-        <QRCodeCanvas
-          style={{ width: '100%', height: 'auto' }}
-          bgColor='transparent'
-          value={`${window.location.origin}${window.location.pathname}#${roomCode}`}
-        />
-      </center>
-      <p>
+      {warningNeeded && <>
+        <div style={{
+          width: 'var(--iaw)',
+          height: 'var(--iaw)',
+        }}>
+          <p>
+            Whoa there! Running JumboSwap with more than&nbsp;
+            {maxRecommendedPartySize} parties may perform poorly. Only
+            invite more people if you like to live dangerously.
+          </p>
+          <p>
+            <a
+              onClick={() => ctx.partySizeWarningDismissed.set(true)}
+              style={{ cursor: 'pointer' }}
+            >I like to live dangerously.</a>
+          </p>
+        </div>
+      </>}
+      {!warningNeeded && <>
+        <center>
+          <QRCodeCanvas
+            style={{ width: '100%', height: 'auto' }}
+            bgColor='transparent'
+            value={`${window.location.origin}${window.location.pathname}#${roomCode}`}
+          />
+        </center>
+      </>}
+      <p style={{ visibility: warningNeeded ? 'hidden' : 'visible' }}>
         Or <CopyToClipboard text={roomCode}>
           <button style={{ padding: '0.5rem' }}>copy</button>
         </CopyToClipboard> it and send.

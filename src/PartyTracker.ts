@@ -11,9 +11,16 @@ type Events = {
   allReady(): void;
 };
 
+const PartyUpdateField = z.object({
+  name: z.string(),
+  item: z.string(),
+  ready: z.boolean(),
+}).partial();
+
 const Ping = z.object({
   type: z.literal('ping'),
   pingId: z.number(),
+  partyUpdate: PartyUpdateField,
 });
 
 const Pong = z.object({
@@ -23,11 +30,7 @@ const Pong = z.object({
 
 const PartyUpdate = z.object({
   type: z.literal('partyUpdate'),
-  partyUpdate: z.object({
-    name: z.string(),
-    item: z.string(),
-    ready: z.boolean(),
-  }).partial(),
+  partyUpdate: PartyUpdateField,
 });
 
 function defaultParty(): Party {
@@ -65,16 +68,26 @@ export default class PartyTracker extends EventEmitter<Events> {
       return;
     }
 
+    this.applyPartyUpdate(from, parsed.data.partyUpdate);
+  };
+
+  applyPartyUpdate(from: PublicKey, partyUpdate: Partial<Party>) {
     const memberId = toPartyId(from);
 
     const party = {
       ...(this.partiesById[memberId] ?? defaultParty()),
-      ...parsed.data.partyUpdate,
+      ...partyUpdate,
     };
+
+    const oldParty = this.partiesById[memberId];
+
+    if (JSON.stringify(party) === JSON.stringify(oldParty)) {
+      return;
+    }
 
     this.partiesById[memberId] = party;
     this.emitPartiesUpdated();
-  };
+  }
 
   setMembers(members: PublicKey[]) {
     this.memberIds = members.map(toPartyId);
@@ -134,7 +147,13 @@ export default class PartyTracker extends EventEmitter<Events> {
         const parsed = Ping.safeParse(data);
 
         if (parsed.data) {
-          const { pingId } = parsed.data;
+          const { pingId, partyUpdate } = parsed.data;
+
+          // Note: This is not ideal - we're processing party updates as part of
+          // pings to make sure we never miss them. Instead, it would be great
+          // to have a better Room abstraction that can deliver messages more
+          // reliably.
+          this.applyPartyUpdate(otherPk, partyUpdate);
 
           if (recentPingIds.includes(pingId)) {
             return;
@@ -161,7 +180,7 @@ export default class PartyTracker extends EventEmitter<Events> {
 
       (async () => {
         while (true) {
-          socket.send({ type: 'ping', pingId });
+          socket.send({ type: 'ping', pingId, partyUpdate: this.getSelf() });
 
           await new Promise(resolve => {
             setTimeout(resolve, 1000);

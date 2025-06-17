@@ -78,6 +78,7 @@ export default class Ctx extends EventEmitter<{ everyoneReady(): void }> {
   name = new UsableField('');
   item = new UsableField('');
   parties = new UsableField<Party[]>([{ name: '', item: '', ready: false }]);
+  partySizeWarningDismissed = new UsableField(false);
   pk = new UsableField<PublicKey | undefined>(undefined);
   readyFlags = new UsableField<boolean[] | undefined>(undefined);
   protocolMsgQueue = new AsyncQueue<{ from: PublicKey, data: Uint8Array }>();
